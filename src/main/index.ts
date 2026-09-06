@@ -1,11 +1,13 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, session } from "electron";
 import { IPC } from "../shared/bridge";
+import { answerScreenShare } from "./screenshare";
 import { createWindow, openServer } from "./window";
 
 // Until there is a server list (Desktop 2), the app opens its own page
 // and loads whichever server the person types.
 
 app.whenReady().then(() => {
+  answerScreenShare(session.defaultSession);
   ipcMain.on(IPC.setBadge, (_event, count: number) => {
     app.setBadgeCount(count);
   });
