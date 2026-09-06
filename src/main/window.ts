@@ -9,7 +9,9 @@ import { BrowserWindow, shell } from "electron";
 const shellPreload = join(__dirname, "../preload/shell.js");
 const bridgePreload = join(__dirname, "../preload/bridge.js");
 
-export function createWindow(): BrowserWindow {
+// message, when given, is shown on the page: why the last server did
+// not open.
+export function createWindow(message?: string): BrowserWindow {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -29,10 +31,13 @@ export function createWindow(): BrowserWindow {
     void shell.openExternal(url);
     return { action: "deny" };
   });
+  const query = message ? `?message=${encodeURIComponent(message)}` : "";
   if (process.env.ELECTRON_RENDERER_URL) {
-    void win.loadURL(process.env.ELECTRON_RENDERER_URL);
+    void win.loadURL(process.env.ELECTRON_RENDERER_URL + query);
   } else {
-    void win.loadFile(join(__dirname, "../renderer/index.html"));
+    void win.loadFile(join(__dirname, "../renderer/index.html"), {
+      search: query,
+    });
   }
   return win;
 }
@@ -62,6 +67,17 @@ export function openServer(from: BrowserWindow, url: string) {
     win.show();
     from.close();
   });
+  // A server that cannot be reached, or refuses the load, goes back to
+  // the add-server page with the reason instead of a blank window.
+  win.webContents.on(
+    "did-fail-load",
+    (_event, code, description, failedUrl, isMainFrame) => {
+      if (!isMainFrame || code === -3) return; // -3: aborted by a newer load
+      createWindow(`Could not open ${failedUrl}: ${description} (${code})`);
+      win.close();
+      from.close();
+    },
+  );
   win.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
