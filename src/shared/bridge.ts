@@ -15,6 +15,7 @@ export interface StoopBridge {
 }
 
 // IPC channel names, one place so main and preload cannot drift.
+// preload/shell.ts repeats its one name as a literal; see the note there.
 export const IPC = {
   setBadge: "stoop:set-badge",
   shortcut: "stoop:shortcut",
