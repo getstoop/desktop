@@ -1,6 +1,32 @@
 import { join } from "node:path";
 import { BrowserWindow, shell } from "electron";
 
+// No native title bar: the page draws that strip in its own theme and
+// the OS lays its window controls over it (the traffic lights on macOS,
+// the overlay on Windows and Linux). The overlay's colours follow the
+// page's theme-color, which the web app keeps in step with its theme.
+const frame = {
+  titleBarStyle: "hidden" as const,
+  titleBarOverlay: { color: "#141517", symbolColor: "#e6e7ea", height: 32 },
+};
+
+function followThemeColor(win: BrowserWindow) {
+  win.webContents.on("did-change-theme-color", (_event, color) => {
+    if (!color) return;
+    win.setBackgroundColor(color);
+    if (process.platform !== "darwin") {
+      win.setTitleBarOverlay({ color, symbolColor: symbolFor(color) });
+    }
+  });
+}
+
+// Light text on a dark colour, dark text on a light one.
+function symbolFor(hex: string): string {
+  const n = Number.parseInt(hex.slice(1, 7), 16);
+  const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#1f1d1a" : "#e6e7ea";
+}
+
 // Two preloads: the app's own page gets window.shell; a server page gets
 // window.stoop and nothing else. A window switches preload when it
 // switches from one to the other, which is why loading a server replaces
@@ -18,6 +44,7 @@ export function createWindow(message?: string): BrowserWindow {
     minWidth: 720,
     minHeight: 480,
     show: false,
+    ...frame,
     webPreferences: {
       preload: shellPreload,
       contextIsolation: true,
@@ -56,6 +83,7 @@ export function openServer(from: BrowserWindow, url: string) {
   const win = new BrowserWindow({
     ...bounds,
     show: false,
+    ...frame,
     webPreferences: {
       preload: bridgePreload,
       contextIsolation: true,
@@ -82,6 +110,7 @@ export function openServer(from: BrowserWindow, url: string) {
     void shell.openExternal(url);
     return { action: "deny" };
   });
+  followThemeColor(win);
   // Stay on the server: a link off its origin opens outside.
   win.webContents.on("will-navigate", (event, next) => {
     if (new URL(next).origin !== target.origin) {
