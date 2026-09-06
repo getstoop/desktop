@@ -5,7 +5,10 @@
   "description": "Stoop for the desktop: a shell around the web app your server already serves.",
   "private": true,
   "license": "Apache-2.0",
-  "author": "getstoop",
+  "author": {
+    "name": "getstoop",
+    "email": "noreply@getstoop.github.io"
+  },
   "homepage": "https://github.com/getstoop/desktop",
   "main": "./out/main/index.js",
   "scripts": {
