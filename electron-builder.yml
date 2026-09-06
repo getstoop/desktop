@@ -1,0 +1,23 @@
+appId: com.getstoop.desktop
+productName: Stoop
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - out/**
+  - package.json
+mac:
+  category: public.app-category.social-networking
+  target:
+    - target: dmg
+      arch: [universal]
+win:
+  target: nsis
+linux:
+  category: Network;Chat
+  target: [AppImage, deb]
+publish:
+  provider: github
+  owner: getstoop
+  repo: desktop
+  releaseType: draft

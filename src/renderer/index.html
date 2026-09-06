@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+    <title>Stoop</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <main class="card">
+      <h1>Stoop</h1>
+      <p>Enter the address of a Stoop server to open it here.</p>
+      <form id="open">
+        <input id="url" type="url" placeholder="https://chat.example.com" required />
+        <button type="submit">Open</button>
+      </form>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "stoop-desktop",
+  "productName": "Stoop",
+  "version": "0.1.0",
+  "description": "Stoop for the desktop: a shell around the web app your server already serves.",
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "getstoop",
+  "homepage": "https://github.com/getstoop/desktop",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "biome check src",
+    "format": "biome format --write src",
+    "package": "electron-vite build && electron-builder --publish never",
+    "package:dir": "electron-vite build && electron-builder --dir"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0"
+  },
+  "packageManager": "pnpm@11.23.0"
+}
