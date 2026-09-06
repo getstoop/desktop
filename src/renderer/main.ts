@@ -4,6 +4,13 @@ declare global {
   }
 }
 
+const message = new URLSearchParams(location.search).get("message");
+if (message) {
+  const el = document.getElementById("message") as HTMLParagraphElement;
+  el.textContent = message;
+  el.hidden = false;
+}
+
 const form = document.getElementById("open") as HTMLFormElement;
 const input = document.getElementById("url") as HTMLInputElement;
 input.focus();

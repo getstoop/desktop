@@ -36,6 +36,9 @@ p {
   margin: 0 0 20px;
   color: var(--muted);
 }
+.message {
+  color: var(--accent);
+}
 form {
   display: flex;
   gap: 8px;
