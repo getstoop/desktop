@@ -1,23 +1,66 @@
-import { app, BrowserWindow, ipcMain, session } from "electron";
-import { IPC } from "../shared/bridge";
-import { answerScreenShare } from "./screenshare";
-import { createWindow, openServer } from "./window";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { IPC, type Probe } from "../shared/bridge";
+import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
+import { MainWindow } from "./window";
 
-// Until there is a server list (Desktop 2), the app opens its own page
-// and loads whichever server the person types.
+let main: MainWindow | null = null;
 
 app.whenReady().then(() => {
-  answerScreenShare(session.defaultSession);
-  ipcMain.on(IPC.setBadge, (_event, count: number) => {
-    app.setBadgeCount(count);
+  main = new MainWindow();
+  main.rebuildAppMenu();
+
+  ipcMain.on(IPC.setBadge, (event, count: number) =>
+    main?.setBadge(event.sender.id, count),
+  );
+
+  // The add-server page: check first, add only when the person confirms
+  // by pressing Open on a good answer.
+  ipcMain.handle(IPC.probe, async (_event, input: string): Promise<Probe> => {
+    const origin = normalizeServerUrl(input);
+    if (!origin)
+      return {
+        ok: false,
+        kind: "not-stoop",
+        detail: "That is not an address.",
+      };
+    return probeServer(origin);
   });
-  ipcMain.on(IPC.openServer, (event, url: string) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) openServer(win, url);
+  ipcMain.handle(
+    IPC.addServer,
+    async (_event, input: string): Promise<Probe> => {
+      const origin = normalizeServerUrl(input);
+      if (!origin)
+        return {
+          ok: false,
+          kind: "not-stoop",
+          detail: "That is not an address.",
+        };
+      const probe = await probeServer(origin);
+      if (probe.ok) {
+        const server = await main?.addServer(origin, probe.name);
+        if (server && !meetsMinimum(probe.version))
+          main?.retryServer(server.id);
+      }
+      return probe;
+    },
+  );
+  ipcMain.on(IPC.removeServer, (_event, id: string) => main?.removeServer(id));
+  ipcMain.on(IPC.retryServer, (_event, id: string) => main?.retryServer(id));
+  ipcMain.on(IPC.openMenu, () => main?.popupServerMenu());
+  ipcMain.on(IPC.openExternal, (_event, url: string) => {
+    if (/^https?:\/\//.test(url)) void shell.openExternal(url);
   });
-  createWindow();
+  ipcMain.on(IPC.windowAction, (_event, action: string) => {
+    const win = main?.win;
+    if (!win) return;
+    if (action === "minimize") win.minimize();
+    else if (action === "maximize")
+      win.isMaximized() ? win.unmaximize() : win.maximize();
+    else if (action === "close") win.close();
+  });
+
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) main = new MainWindow();
   });
 });
 

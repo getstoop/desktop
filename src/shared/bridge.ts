@@ -15,9 +15,32 @@ export interface StoopBridge {
 }
 
 // IPC channel names, one place so main and preload cannot drift.
-// preload/shell.ts repeats its one name as a literal; see the note there.
+// preload/shell.ts repeats its names as literals; see the note there.
 export const IPC = {
   setBadge: "stoop:set-badge",
   shortcut: "stoop:shortcut",
-  openServer: "shell:open-server",
+  probe: "shell:probe",
+  addServer: "shell:add-server",
+  removeServer: "shell:remove-server",
+  retryServer: "shell:retry-server",
+  openMenu: "shell:open-menu",
+  windowAction: "shell:window-action",
+  openExternal: "shell:open-external",
+  chromeState: "shell:chrome-state",
 } as const;
+
+// What the title strip shows: pushed from main whenever it changes.
+export interface ChromeState {
+  name: string;
+  // Another server has unread activity.
+  dot: boolean;
+  // The front server's theme colour, and text that reads on it.
+  color: string;
+  symbol: string;
+  platform: "darwin" | "win32" | "linux" | string;
+}
+
+// The answer to "is this a Stoop server I can open?".
+export type Probe =
+  | { ok: true; version: string; bridge: number; name: string }
+  | { ok: false; kind: "unreachable" | "not-stoop"; detail: string };

@@ -4,9 +4,17 @@ import { contextBridge, ipcRenderer } from "electron";
 //
 // Imports nothing but electron on purpose: a sandboxed preload cannot
 // require another file, and a module shared with bridge.ts would be
-// split into one. The channel name is IPC.openServer in shared/bridge.ts.
+// split into one. The channel names are the IPC table in shared/bridge.ts.
 contextBridge.exposeInMainWorld("shell", {
-  openServer(url: string) {
-    ipcRenderer.send("shell:open-server", url);
+  probe: (url: string) => ipcRenderer.invoke("shell:probe", url),
+  addServer: (url: string) => ipcRenderer.invoke("shell:add-server", url),
+  removeServer: (id: string) => ipcRenderer.send("shell:remove-server", id),
+  retryServer: (id: string) => ipcRenderer.send("shell:retry-server", id),
+  openMenu: () => ipcRenderer.send("shell:open-menu"),
+  openExternal: (url: string) => ipcRenderer.send("shell:open-external", url),
+  windowAction: (action: string) =>
+    ipcRenderer.send("shell:window-action", action),
+  onChromeState: (handler: (state: unknown) => void) => {
+    ipcRenderer.on("shell:chrome-state", (_event, state) => handler(state));
   },
 });

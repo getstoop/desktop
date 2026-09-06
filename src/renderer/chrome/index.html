@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:*" />
+    <title>Stoop</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        height: 32px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-left: 84px;
+        background: #141517;
+        color: #e6e7ea;
+        font: 12px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        -webkit-app-region: drag;
+        user-select: none;
+      }
+      body.no-lights { padding-left: 12px; }
+      #server {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border: none;
+        border-radius: 6px;
+        background: rgba(127, 127, 127, 0.18);
+        color: inherit;
+        font: inherit;
+        font-weight: 600;
+        -webkit-app-region: no-drag;
+        cursor: default;
+      }
+      #server:hover { background: rgba(127, 127, 127, 0.3); }
+      #server[hidden] { display: none; }
+      #dot {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #e2725b;
+      }
+      #dot[hidden] { display: none; }
+      #controls {
+        margin-left: auto;
+        display: flex;
+        height: 100%;
+        -webkit-app-region: no-drag;
+      }
+      #controls[hidden] { display: none; }
+      #controls button {
+        width: 46px;
+        height: 100%;
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+      }
+      #controls button:hover { background: rgba(127, 127, 127, 0.25); }
+      #controls button.close:hover { background: #e05c5c; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <button id="server" type="button" hidden>
+      <span id="name"></span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+      <span id="dot" hidden></span>
+    </button>
+    <div id="controls" hidden>
+      <button type="button" data-action="minimize" title="Minimize">&#x2013;</button>
+      <button type="button" data-action="maximize" title="Maximize">&#x25A1;</button>
+      <button type="button" class="close" data-action="close" title="Close">&#x2715;</button>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -15,5 +15,16 @@ export default defineConfig({
       },
     },
   },
-  renderer: {},
+  renderer: {
+    build: {
+      rollupOptions: {
+        input: {
+          // The app's own pages. Each is a view the main process places.
+          add: resolve(__dirname, "src/renderer/add/index.html"),
+          chrome: resolve(__dirname, "src/renderer/chrome/index.html"),
+          gate: resolve(__dirname, "src/renderer/gate/index.html"),
+        },
+      },
+    },
+  },
 });
