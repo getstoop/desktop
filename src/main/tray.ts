@@ -11,6 +11,7 @@ export interface TraySource {
   unreadTotal(): number;
   showWindow(): void;
   showAddServer(): void;
+  showSettings(): void;
 }
 
 export class AppTray {
@@ -40,6 +41,7 @@ export class AppTray {
       })),
       { type: "separator" },
       { label: "Add a server…", click: () => this.source.showAddServer() },
+      { label: "Settings…", click: () => this.source.showSettings() },
       { type: "separator" },
       {
         label: "Keep running when the window closes",
@@ -59,7 +61,7 @@ export class AppTray {
     this.tray.setContextMenu(Menu.buildFromTemplate(items));
   }
 
-  private update(patch: Partial<Settings>) {
+  update(patch: Partial<Settings>) {
     this.settings = { ...this.settings, ...patch };
     saveSettings(this.settings);
     this.refresh();

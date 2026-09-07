@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:*" />
+    <title>App settings</title>
+    <link rel="stylesheet" href="../shell.css" />
+    <link rel="stylesheet" href="./settings.css" />
+  </head>
+  <body>
+    <div class="settings-page">
+      <nav class="settings-nav" aria-label="Settings sections">
+        <p class="eyebrow">App settings</p>
+        <a href="#general">General</a>
+        <a href="#servers">Servers</a>
+        <a href="#about">About</a>
+      </nav>
+      <main class="settings-scroll">
+        <div class="settings-content">
+          <header class="settings-head">
+            <h1>App settings</h1>
+            <p>These belong to this app on this computer. Everything about you and your servers lives in each server's own settings.</p>
+          </header>
+
+          <section id="general" class="card-section">
+            <h2>General</h2>
+            <div class="setting-row">
+              <div class="setting-text">
+                <span class="setting-title">Launch at login</span>
+                <span class="setting-desc">Open Stoop when you sign in to this computer.</span>
+              </div>
+              <div class="setting-control"><input id="launchAtLogin" type="checkbox" /></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <span class="setting-title">Keep running when the window closes</span>
+                <span class="setting-desc">Closing the window leaves Stoop in the menu bar and voice keeps going. Quit from there.</span>
+              </div>
+              <div class="setting-control"><input id="keepRunning" type="checkbox" /></div>
+            </div>
+          </section>
+
+          <section id="servers" class="card-section">
+            <h2>Servers</h2>
+            <div id="serverList" class="server-list"></div>
+            <div class="actions"><button id="addServer" type="button" class="chip">Add a server…</button></div>
+          </section>
+
+          <section id="about" class="card-section">
+            <h2>About</h2>
+            <div class="setting-row">
+              <div class="setting-text">
+                <span class="setting-title">Stoop <span id="version"></span></span>
+                <span class="setting-desc">Updates arrive as releases of the app. Checking and installing them from here comes later.</span>
+              </div>
+              <div class="setting-control"><button id="releases" type="button" class="chip">Releases page</button></div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

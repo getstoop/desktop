@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld("shell", {
   retryServer: (id: string) => ipcRenderer.send("shell:retry-server", id),
   openMenu: () => ipcRenderer.send("shell:open-menu"),
   updateApp: () => ipcRenderer.send("shell:update-app"),
+  getSettings: () => ipcRenderer.invoke("shell:get-settings"),
+  setSettings: (patch: unknown) =>
+    ipcRenderer.invoke("shell:set-settings", patch),
+  showPage: (page: string) => ipcRenderer.send("shell:show-page", page),
   openExternal: (url: string) => ipcRenderer.send("shell:open-external", url),
   windowAction: (action: string) =>
     ipcRenderer.send("shell:window-action", action),

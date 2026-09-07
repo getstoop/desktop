@@ -23,6 +23,7 @@ export default defineConfig({
           add: resolve(__dirname, "src/renderer/add/index.html"),
           chrome: resolve(__dirname, "src/renderer/chrome/index.html"),
           gate: resolve(__dirname, "src/renderer/gate/index.html"),
+          settings: resolve(__dirname, "src/renderer/settings/index.html"),
         },
       },
     },

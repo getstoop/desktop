@@ -51,6 +51,17 @@ app.whenReady().then(() => {
   ipcMain.on(IPC.removeServer, (_event, id: string) => main?.removeServer(id));
   ipcMain.on(IPC.retryServer, (_event, id: string) => main?.retryServer(id));
   ipcMain.on(IPC.openMenu, () => main?.popupServerMenu());
+  ipcMain.handle(IPC.getSettings, () => main?.settingsView());
+  ipcMain.handle(
+    IPC.setSettings,
+    (_event, patch: { keepRunning?: boolean; launchAtLogin?: boolean }) => {
+      main?.tray.update(patch);
+      return main?.settingsView();
+    },
+  );
+  ipcMain.on(IPC.showPage, (_event, page: string) => {
+    if (page === "add" || page === "settings") main?.showPage(page);
+  });
   // Until the app updates itself (Desktop 10), the hint opens the
   // releases page.
   ipcMain.on(IPC.updateApp, () => {

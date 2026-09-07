@@ -8,7 +8,7 @@ import {
   shell,
   WebContentsView,
 } from "electron";
-import type { ChromeState } from "../shared/bridge";
+import type { ChromeState, SettingsView } from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
 import { meetsMinimum, probeServer } from "./probe";
 import { answerScreenShare } from "./screenshare";
@@ -52,6 +52,7 @@ interface Slot {
   gate?: { kind: string; detail: string };
   // The server publishes a bridge level above what this app implements.
   newer: boolean;
+  version: string;
 }
 
 // A loaded server is asked again this long after its last answer, when
@@ -127,6 +128,10 @@ export class MainWindow {
       showAddServer: () => {
         this.reveal();
         this.showPage("add");
+      },
+      showSettings: () => {
+        this.reveal();
+        this.showPage("settings");
       },
     });
     for (const server of this.servers) this.openSlot(server);
@@ -205,6 +210,7 @@ export class MainWindow {
       gated: false,
       probedAt: 0,
       newer: false,
+      version: "",
     };
     this.slots.set(server.id, slot);
     const wc = view.webContents;
@@ -266,6 +272,7 @@ export class MainWindow {
       saveServers(this.servers);
     }
     slot.newer = probe.bridge > BRIDGE;
+    slot.version = probe.version;
     const wasGated = slot.gated;
     slot.gated = false;
     if (!slot.loaded) {
@@ -373,12 +380,13 @@ export class MainWindow {
     }
     this.servers = this.servers.filter((s) => s.id !== id);
     saveServers(this.servers);
+    // Removing from the settings page keeps the page; removing the
+    // server in front moves to the next one.
+    const wasFront = this.front === id;
+    if (wasFront) this.front = null;
     const next = this.servers[0];
-    if (next) this.show(next.id);
-    else {
-      this.front = null;
-      this.showPage("add");
-    }
+    if (!next) this.showPage("add");
+    else if (wasFront) this.show(next.id);
     this.rebuildAppMenu();
     this.tray.refresh();
   }
@@ -386,6 +394,21 @@ export class MainWindow {
   retryServer(id: string) {
     const server = this.servers.find((s) => s.id === id);
     if (server) void this.checkAndLoad(server);
+  }
+
+  // What the settings page shows.
+  settingsView(): SettingsView {
+    return {
+      ...this.tray.settings,
+      version: app.getVersion(),
+      platform: process.platform,
+      servers: this.servers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        url: s.url,
+        version: this.slots.get(s.id)?.version ?? "",
+      })),
+    };
   }
 
   serverFor(webContentsId: number): Slot | undefined {
@@ -425,6 +448,7 @@ export class MainWindow {
       ...this.serverMenuItems(),
       { type: "separator" },
       { label: "Add a server…", click: () => this.showPage("add") },
+      { label: "App settings…", click: () => this.showPage("settings") },
     ];
     Menu.buildFromTemplate(items).popup({
       window: this.win,
@@ -445,6 +469,11 @@ export class MainWindow {
           ...this.serverMenuItems(),
           { type: "separator" },
           { label: "Add a server…", click: () => this.showPage("add") },
+          {
+            label: "App settings…",
+            accelerator: "CmdOrCtrl+,",
+            click: () => this.showPage("settings"),
+          },
         ],
       },
       { role: "viewMenu" },

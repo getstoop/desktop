@@ -28,7 +28,20 @@ export const IPC = {
   openExternal: "shell:open-external",
   chromeState: "shell:chrome-state",
   updateApp: "shell:update-app",
+  getSettings: "shell:get-settings",
+  setSettings: "shell:set-settings",
+  showPage: "shell:show-page",
 } as const;
+
+// What the settings page shows, pulled from main on load and after a
+// change.
+export interface SettingsView {
+  keepRunning: boolean;
+  launchAtLogin: boolean;
+  version: string;
+  platform: string;
+  servers: { id: string; name: string; url: string; version: string }[];
+}
 
 // What the title strip shows: pushed from main whenever it changes.
 export interface ChromeState {
