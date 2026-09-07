@@ -16,6 +16,13 @@ contextBridge.exposeInMainWorld("shell", {
   setSettings: (patch: unknown) =>
     ipcRenderer.invoke("shell:set-settings", patch),
   showPage: (page: string) => ipcRenderer.send("shell:show-page", page),
+  onPickerSources: (handler: (payload: unknown) => void) => {
+    ipcRenderer.on("shell:picker-sources", (_event, payload) =>
+      handler(payload),
+    );
+  },
+  pickerChoose: (choice: unknown) =>
+    ipcRenderer.send("shell:picker-choice", choice),
   openExternal: (url: string) => ipcRenderer.send("shell:open-external", url),
   windowAction: (action: string) =>
     ipcRenderer.send("shell:window-action", action),

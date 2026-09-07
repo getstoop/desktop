@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:*" />
+    <title>Share your screen</title>
+    <link rel="stylesheet" href="../shell.css" />
+    <link rel="stylesheet" href="./picker.css" />
+  </head>
+  <body class="picker">
+    <header class="picker-head">
+      <h1>Share your screen</h1>
+      <p>Everyone in the voice channel will see what you pick.</p>
+    </header>
+    <div class="tabs" role="tablist">
+      <button id="tabScreens" type="button" class="chip active" role="tab" aria-selected="true">Screens</button>
+      <button id="tabWindows" type="button" class="chip" role="tab" aria-selected="false">Windows</button>
+    </div>
+    <div id="grid" class="grid" role="listbox" aria-label="What to share"></div>
+    <footer class="picker-foot">
+      <label id="audioRow" class="audio" hidden><input id="audio" type="checkbox" checked /> Share system audio</label>
+      <span class="spacer"></span>
+      <button id="cancel" type="button" class="chip">Cancel</button>
+      <button id="share" type="button" class="primary" disabled>Share</button>
+    </footer>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

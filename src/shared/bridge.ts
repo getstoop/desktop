@@ -31,7 +31,18 @@ export const IPC = {
   getSettings: "shell:get-settings",
   setSettings: "shell:set-settings",
   showPage: "shell:show-page",
+  pickerSources: "shell:picker-sources",
+  pickerChoice: "shell:picker-choice",
 } as const;
+
+// One thing the screen picker can offer.
+export interface PickerSource {
+  id: string;
+  name: string;
+  kind: "screen" | "window";
+  thumbnail: string; // data URL, or empty
+  icon: string; // data URL, or empty
+}
 
 // What the settings page shows, pulled from main on load and after a
 // change.

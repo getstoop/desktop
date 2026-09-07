@@ -1,5 +1,10 @@
 // window.shell, as preload/shell.ts exposes it to the app's own pages.
-import type { ChromeState, Probe, SettingsView } from "../shared/bridge";
+import type {
+  ChromeState,
+  PickerSource,
+  Probe,
+  SettingsView,
+} from "../shared/bridge";
 
 declare global {
   interface Window {
@@ -16,6 +21,10 @@ declare global {
         launchAtLogin?: boolean;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
+      onPickerSources(
+        handler: (payload: { sources: PickerSource[]; audio: boolean }) => void,
+      ): void;
+      pickerChoose(choice: { id: string; audio: boolean } | null): void;
       openExternal(url: string): void;
       windowAction(action: "minimize" | "maximize" | "close"): void;
       onChromeState(handler: (state: ChromeState) => void): void;
