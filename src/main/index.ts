@@ -5,8 +5,13 @@ import { MainWindow } from "./window";
 
 let main: MainWindow | null = null;
 
+app.on("before-quit", () => {
+  app.isQuittingForReal = true;
+});
+
 app.whenReady().then(() => {
   main = new MainWindow();
+  app.setLoginItemSettings({ openAtLogin: main.tray.settings.launchAtLogin });
   main.rebuildAppMenu();
 
   ipcMain.on(IPC.setBadge, (event, count: number) =>
@@ -64,11 +69,16 @@ app.whenReady().then(() => {
     else if (action === "close") win.close();
   });
 
+  // The dock icon on macOS, or a second launch elsewhere: bring the
+  // window back rather than open another.
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) main = new MainWindow();
+    else main?.reveal();
   });
 });
 
+// With the window hidden in the tray the app is still running; only a
+// real close of the last window ends it, and never on macOS.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });

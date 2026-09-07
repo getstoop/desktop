@@ -20,6 +20,7 @@ import {
   saveServers,
 } from "./servers";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
+import { AppTray, hideOnClose } from "./tray";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -67,6 +68,7 @@ export class MainWindow {
   private front: string | null = null; // server id, or null for the page view
   private servers: Server[] = loadServers();
   private state: WindowState = loadWindowState();
+  readonly tray: AppTray;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
@@ -93,7 +95,14 @@ export class MainWindow {
     this.win.on("focus", () => this.recheck(false));
     const poll = setInterval(() => this.recheck(true), GATE_POLL_MS);
     this.win.on("closed", () => clearInterval(poll));
-    this.win.on("close", () => this.remember(true));
+    this.win.on("close", (event) => {
+      this.remember(true);
+      if (hideOnClose(this.tray.settings)) {
+        event.preventDefault();
+        this.win.hide();
+      }
+    });
+    this.win.on("closed", () => this.tray.destroy());
     if (this.state.maximized) this.win.maximize();
     // The window loads no page of its own, so ready-to-show never fires;
     // show once the strip has painted, or after a moment regardless.
@@ -107,11 +116,31 @@ export class MainWindow {
     setTimeout(reveal, 1500);
     this.layout();
 
+    this.tray = new AppTray({
+      serverItems: () => this.serverMenuItems(),
+      unreadTotal: () => {
+        let total = 0;
+        for (const s of this.slots.values()) total += s.badge;
+        return total;
+      },
+      showWindow: () => this.reveal(),
+      showAddServer: () => {
+        this.reveal();
+        this.showPage("add");
+      },
+    });
     for (const server of this.servers) this.openSlot(server);
     const front =
       this.servers.find((s) => s.id === this.state.front) ?? this.servers[0];
     if (front) this.show(front.id);
     else this.showPage("add");
+  }
+
+  // Brings the window back from hidden or minimized.
+  reveal() {
+    if (this.win.isMinimized()) this.win.restore();
+    this.win.show();
+    this.win.focus();
   }
 
   // Writes the window state a moment after the last change, or now.
@@ -331,6 +360,7 @@ export class MainWindow {
     this.openSlot(server);
     this.show(server.id);
     this.rebuildAppMenu();
+    this.tray.refresh();
     return server;
   }
 
@@ -350,6 +380,7 @@ export class MainWindow {
       this.showPage("add");
     }
     this.rebuildAppMenu();
+    this.tray.refresh();
   }
 
   retryServer(id: string) {
@@ -371,6 +402,7 @@ export class MainWindow {
     for (const s of this.slots.values()) total += s.badge;
     app.setBadgeCount(total);
     this.pushChrome();
+    this.tray.refresh();
   }
 
   // ---- the menu ----
