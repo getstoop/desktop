@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("shell", {
   removeServer: (id: string) => ipcRenderer.send("shell:remove-server", id),
   retryServer: (id: string) => ipcRenderer.send("shell:retry-server", id),
   openMenu: () => ipcRenderer.send("shell:open-menu"),
+  updateApp: () => ipcRenderer.send("shell:update-app"),
   openExternal: (url: string) => ipcRenderer.send("shell:open-external", url),
   windowAction: (action: string) =>
     ipcRenderer.send("shell:window-action", action),

@@ -47,6 +47,11 @@ app.whenReady().then(() => {
   ipcMain.on(IPC.removeServer, (_event, id: string) => main?.removeServer(id));
   ipcMain.on(IPC.retryServer, (_event, id: string) => main?.retryServer(id));
   ipcMain.on(IPC.openMenu, () => main?.popupServerMenu());
+  // Until the app updates itself (Desktop 10), the hint opens the
+  // releases page.
+  ipcMain.on(IPC.updateApp, () => {
+    void shell.openExternal("https://github.com/getstoop/desktop/releases");
+  });
   ipcMain.on(IPC.openExternal, (_event, url: string) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
   });

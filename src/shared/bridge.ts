@@ -27,6 +27,7 @@ export const IPC = {
   windowAction: "shell:window-action",
   openExternal: "shell:open-external",
   chromeState: "shell:chrome-state",
+  updateApp: "shell:update-app",
 } as const;
 
 // What the title strip shows: pushed from main whenever it changes.
@@ -38,6 +39,8 @@ export interface ChromeState {
   color: string;
   symbol: string;
   platform: "darwin" | "win32" | "linux" | string;
+  // The front server speaks a newer bridge than this app: offer an update.
+  newer: boolean;
 }
 
 // The answer to "is this a Stoop server I can open?".

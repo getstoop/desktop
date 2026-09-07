@@ -9,6 +9,7 @@ declare global {
       removeServer(id: string): void;
       retryServer(id: string): void;
       openMenu(): void;
+      updateApp(): void;
       openExternal(url: string): void;
       windowAction(action: "minimize" | "maximize" | "close"): void;
       onChromeState(handler: (state: ChromeState) => void): void;

@@ -9,7 +9,7 @@ import {
   WebContentsView,
 } from "electron";
 import type { ChromeState } from "../shared/bridge";
-import { IPC } from "../shared/bridge";
+import { BRIDGE, IPC } from "../shared/bridge";
 import { meetsMinimum, probeServer } from "./probe";
 import { answerScreenShare } from "./screenshare";
 import {
@@ -43,7 +43,21 @@ interface Slot {
   view: WebContentsView;
   badge: number;
   color: string;
+  // Whether the server's web app is loaded, or the gate page stands in.
+  loaded: boolean;
+  gated: boolean;
+  probedAt: number;
+  // Why the gate page stands in, for showing it again on a switch.
+  gate?: { kind: string; detail: string };
+  // The server publishes a bridge level above what this app implements.
+  newer: boolean;
 }
+
+// A loaded server is asked again this long after its last answer, when
+// the window comes back to the front. A gated one is asked every
+// GATE_POLL_MS regardless, so the page clears as soon as it can.
+const RECHECK_MS = 5 * 60 * 1000;
+const GATE_POLL_MS = 30 * 1000;
 
 export class MainWindow {
   readonly win: BrowserWindow;
@@ -76,6 +90,9 @@ export class MainWindow {
       this.remember();
     });
     this.win.on("move", () => this.remember());
+    this.win.on("focus", () => this.recheck(false));
+    const poll = setInterval(() => this.recheck(true), GATE_POLL_MS);
+    this.win.on("closed", () => clearInterval(poll));
     this.win.on("close", () => this.remember(true));
     if (this.state.maximized) this.win.maximize();
     // The window loads no page of its own, so ready-to-show never fires;
@@ -150,7 +167,16 @@ export class MainWindow {
       },
     });
     view.setBackgroundColor("#141517");
-    const slot: Slot = { server, view, badge: 0, color: "#141517" };
+    const slot: Slot = {
+      server,
+      view,
+      badge: 0,
+      color: "#141517",
+      loaded: false,
+      gated: false,
+      probedAt: 0,
+      newer: false,
+    };
     this.slots.set(server.id, slot);
     const wc = view.webContents;
     wc.setWindowOpenHandler(({ url }) => {
@@ -170,6 +196,7 @@ export class MainWindow {
     });
     wc.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
       if (!isMainFrame || code === -3) return;
+      slot.loaded = false;
       this.gate(server, "unreachable", `${description} (${code})`);
     });
     // A notification click calls window.focus() inside the page, which
@@ -189,9 +216,14 @@ export class MainWindow {
     return slot;
   }
 
-  // Loads the server, or shows the needs-updating page in its slot.
+  // Asks the server what it is, then loads it, keeps it, or gates it.
+  // A server already showing its web app is never reloaded by a check
+  // that comes back fine; only a failure or a recovery changes the view.
   private async checkAndLoad(server: Server) {
+    const slot = this.slots.get(server.id);
+    if (!slot) return;
     const probe = await probeServer(server.url);
+    slot.probedAt = Date.now();
     if (!probe.ok) {
       this.gate(server, probe.kind, probe.detail);
       return;
@@ -200,20 +232,40 @@ export class MainWindow {
       this.gate(server, "too-old", probe.version);
       return;
     }
-    const slot = this.slots.get(server.id);
-    if (!slot) return;
     if (probe.name !== server.name) {
       server.name = probe.name;
       saveServers(this.servers);
-      this.pushChrome();
     }
-    void slot.view.webContents.loadURL(`${server.url}/`);
+    slot.newer = probe.bridge > BRIDGE;
+    const wasGated = slot.gated;
+    slot.gated = false;
+    if (!slot.loaded) {
+      slot.loaded = true;
+      void slot.view.webContents.loadURL(`${server.url}/`);
+    }
+    if (wasGated && this.front === server.id) this.show(server.id);
+    this.pushChrome();
   }
 
   private gate(server: Server, kind: string, detail: string) {
+    const slot = this.slots.get(server.id);
+    if (slot) {
+      slot.gated = true;
+      slot.gate = { kind, detail };
+    }
     const q = `?id=${encodeURIComponent(server.id)}&name=${encodeURIComponent(server.name)}&url=${encodeURIComponent(server.url)}&kind=${kind}&detail=${encodeURIComponent(detail)}`;
     this.load(this.page, "gate", q);
     if (this.front === server.id) this.showPage();
+  }
+
+  // Gated servers are asked again on every poll; loaded ones only when
+  // the window comes back to the front and their last answer is old.
+  private recheck(pollOnly: boolean) {
+    const now = Date.now();
+    for (const slot of this.slots.values()) {
+      const due = slot.gated || (!pollOnly && now - slot.probedAt > RECHECK_MS);
+      if (due) void this.checkAndLoad(slot.server);
+    }
   }
 
   private layout() {
@@ -229,6 +281,12 @@ export class MainWindow {
   show(id: string) {
     const slot = this.slots.get(id);
     if (!slot) return;
+    if (slot.gated && slot.gate) {
+      this.front = id;
+      this.gate(slot.server, slot.gate.kind, slot.gate.detail);
+      this.remember();
+      return;
+    }
     for (const s of this.slots.values()) s.view.setVisible(s === slot);
     this.page.setVisible(false);
     this.front = id;
@@ -253,6 +311,7 @@ export class MainWindow {
       color,
       symbol: symbolFor(color),
       platform: process.platform,
+      newer: slot?.newer ?? false,
     };
     this.win.setBackgroundColor(color);
     this.chrome.webContents.send(IPC.chromeState, state);

@@ -49,8 +49,21 @@
         background: #e2725b;
       }
       #dot[hidden] { display: none; }
-      #controls {
+      #update {
         margin-left: auto;
+        margin-right: 12px;
+        padding: 3px 10px;
+        border: 1px solid currentColor;
+        border-radius: 999px;
+        background: none;
+        color: inherit;
+        font: inherit;
+        opacity: 0.85;
+        -webkit-app-region: no-drag;
+      }
+      #update:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
+      #update[hidden] { display: none; }
+      #controls {
         display: flex;
         height: 100%;
         -webkit-app-region: no-drag;
@@ -74,6 +87,7 @@
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
       <span id="dot" hidden></span>
     </button>
+    <button id="update" type="button" hidden title="This server is newer than this app. Update the app to use everything it offers.">Update the app</button>
     <div id="controls" hidden>
       <button type="button" data-action="minimize" title="Minimize">&#x2013;</button>
       <button type="button" data-action="maximize" title="Maximize">&#x25A1;</button>
