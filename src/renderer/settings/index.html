@@ -11,20 +11,22 @@
   <body>
     <div class="settings-page">
       <nav class="settings-nav" aria-label="Settings sections">
+        <button id="back" type="button" class="back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
+          <span id="backLabel">Back</span>
+        </button>
         <p class="eyebrow">App settings</p>
-        <a href="#general">General</a>
-        <a href="#servers">Servers</a>
-        <a href="#about">About</a>
+        <button type="button" class="nav-link active" data-section="general">General</button>
+        <button type="button" class="nav-link" data-section="servers">Servers</button>
+        <button type="button" class="nav-link" data-section="about">About</button>
       </nav>
       <main class="settings-scroll">
         <div class="settings-content">
-          <header class="settings-head">
-            <h1>App settings</h1>
-            <p>These belong to this app on this computer. Everything about you and your servers lives in each server's own settings.</p>
-          </header>
-
-          <section id="general" class="card-section">
-            <h2>General</h2>
+          <section id="general" class="section">
+            <header class="settings-head">
+              <h1>General</h1>
+              <p>These belong to this app on this computer. Everything about you and your servers lives in each server's own settings.</p>
+            </header>
             <div class="setting-row">
               <div class="setting-text">
                 <span class="setting-title">Launch at login</span>
@@ -41,14 +43,19 @@
             </div>
           </section>
 
-          <section id="servers" class="card-section">
-            <h2>Servers</h2>
+          <section id="servers" class="section" hidden>
+            <header class="settings-head">
+              <h1>Servers</h1>
+              <p>Every server you have added, each with its own sign-in. Removing one here forgets it on this computer only.</p>
+            </header>
             <div id="serverList" class="server-list"></div>
             <div class="actions"><button id="addServer" type="button" class="chip">Add a server…</button></div>
           </section>
 
-          <section id="about" class="card-section">
-            <h2>About</h2>
+          <section id="about" class="section" hidden>
+            <header class="settings-head">
+              <h1>About</h1>
+            </header>
             <div class="setting-row">
               <div class="setting-text">
                 <span class="setting-title">Stoop <span id="version"></span></span>

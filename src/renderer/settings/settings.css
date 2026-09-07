@@ -21,15 +21,47 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
-.settings-nav a {
+.settings-nav .nav-link {
   padding: 8px 12px;
+  border: none;
   border-radius: 6px;
+  background: none;
   color: var(--text-muted);
-  text-decoration: none;
+  text-align: left;
 }
-.settings-nav a:hover {
+.settings-nav .nav-link:hover {
   background: var(--raised);
   color: var(--text);
+}
+.settings-nav .nav-link.active {
+  background: var(--raised);
+  color: var(--text);
+  font-weight: 600;
+}
+.settings-nav .back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px 12px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  align-self: flex-start;
+}
+.settings-nav .back:hover {
+  color: var(--text);
+  background: var(--raised);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.section[hidden] {
+  display: none;
 }
 .settings-scroll {
   flex: 1;
@@ -52,16 +84,10 @@
   font-size: 13px;
   color: var(--text-muted);
 }
-.card-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-.card-section h2 {
-  margin: 0;
-  font-size: 15px;
+.settings-head {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
 }
 .setting-row {
   display: grid;

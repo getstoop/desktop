@@ -60,7 +60,8 @@ app.whenReady().then(() => {
     },
   );
   ipcMain.on(IPC.showPage, (_event, page: string) => {
-    if (page === "add" || page === "settings") main?.showPage(page);
+    if (page === "back") main?.back();
+    else if (page === "add" || page === "settings") main?.showPage(page);
   });
   // Until the app updates itself (Desktop 10), the hint opens the
   // releases page.

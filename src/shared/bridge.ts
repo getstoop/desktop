@@ -40,6 +40,8 @@ export interface SettingsView {
   launchAtLogin: boolean;
   version: string;
   platform: string;
+  // The server to go back to, by name, when there is one.
+  front: string | null;
   servers: { id: string; name: string; url: string; version: string }[];
 }
 

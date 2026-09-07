@@ -396,12 +396,27 @@ export class MainWindow {
     if (server) void this.checkAndLoad(server);
   }
 
+  // The server to return to from one of the app's own pages: the one
+  // in front, or the last one that was.
+  private lastFront(): Server | undefined {
+    const id = this.front ?? this.state.front;
+    return this.servers.find((s) => s.id === id) ?? this.servers[0];
+  }
+
+  // Leaves the app's own page for the server it came from.
+  back() {
+    const server = this.lastFront();
+    if (server) this.show(server.id);
+    else this.showPage("add");
+  }
+
   // What the settings page shows.
   settingsView(): SettingsView {
     return {
       ...this.tray.settings,
       version: app.getVersion(),
       platform: process.platform,
+      front: this.lastFront()?.name ?? null,
       servers: this.servers.map((s) => ({
         id: s.id,
         name: s.name,

@@ -15,7 +15,7 @@ declare global {
         keepRunning?: boolean;
         launchAtLogin?: boolean;
       }): Promise<SettingsView>;
-      showPage(page: "add" | "settings"): void;
+      showPage(page: "add" | "settings" | "back"): void;
       openExternal(url: string): void;
       windowAction(action: "minimize" | "maximize" | "close"): void;
       onChromeState(handler: (state: ChromeState) => void): void;

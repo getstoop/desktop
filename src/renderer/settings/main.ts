@@ -7,7 +7,24 @@ const keepRunning = document.getElementById("keepRunning") as HTMLInputElement;
 const serverList = document.getElementById("serverList") as HTMLDivElement;
 const version = document.getElementById("version") as HTMLSpanElement;
 
+// One section at a time, chosen from the column, as the web app's
+// settings frame does.
+const links = document.querySelectorAll<HTMLButtonElement>(".nav-link");
+const sections = document.querySelectorAll<HTMLElement>(".section");
+for (const link of links) {
+  link.addEventListener("click", () => {
+    for (const l of links) l.classList.toggle("active", l === link);
+    for (const s of sections) s.hidden = s.id !== link.dataset.section;
+  });
+}
+(document.getElementById("back") as HTMLButtonElement).addEventListener(
+  "click",
+  () => window.shell.showPage("back"),
+);
+
 function render(view: SettingsView) {
+  const backLabel = document.getElementById("backLabel") as HTMLSpanElement;
+  backLabel.textContent = view.front ? `Back to ${view.front}` : "Back";
   launchAtLogin.checked = view.launchAtLogin;
   keepRunning.checked = view.keepRunning;
   version.textContent = view.version;
