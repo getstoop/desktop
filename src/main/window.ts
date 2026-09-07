@@ -68,8 +68,16 @@ export class MainWindow {
     this.win.contentView.addChildView(this.chrome);
     this.win.contentView.addChildView(this.page);
     this.win.on("resize", () => this.layout());
-    this.win.once("ready-to-show", () => this.win.show());
-    this.chrome.webContents.once("did-finish-load", () => this.pushChrome());
+    // The window loads no page of its own, so ready-to-show never fires;
+    // show once the strip has painted, or after a moment regardless.
+    const reveal = () => {
+      if (!this.win.isDestroyed() && !this.win.isVisible()) this.win.show();
+    };
+    this.chrome.webContents.once("did-finish-load", () => {
+      this.pushChrome();
+      reveal();
+    });
+    setTimeout(reveal, 1500);
     this.layout();
 
     for (const server of this.servers) this.openSlot(server);
