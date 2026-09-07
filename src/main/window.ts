@@ -19,6 +19,7 @@ import {
   type Server,
   saveServers,
 } from "./servers";
+import { loadWindowState, saveWindowState, type WindowState } from "./state";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -51,11 +52,14 @@ export class MainWindow {
   private slots = new Map<string, Slot>();
   private front: string | null = null; // server id, or null for the page view
   private servers: Server[] = loadServers();
+  private state: WindowState = loadWindowState();
+  private saveTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
     this.win = new BrowserWindow({
       width: 1200,
       height: 800,
+      ...this.state.bounds,
       minWidth: 720,
       minHeight: 480,
       show: false,
@@ -67,7 +71,13 @@ export class MainWindow {
     this.page = this.shellView("add");
     this.win.contentView.addChildView(this.chrome);
     this.win.contentView.addChildView(this.page);
-    this.win.on("resize", () => this.layout());
+    this.win.on("resize", () => {
+      this.layout();
+      this.remember();
+    });
+    this.win.on("move", () => this.remember());
+    this.win.on("close", () => this.remember(true));
+    if (this.state.maximized) this.win.maximize();
     // The window loads no page of its own, so ready-to-show never fires;
     // show once the strip has painted, or after a moment regardless.
     const reveal = () => {
@@ -81,8 +91,27 @@ export class MainWindow {
     this.layout();
 
     for (const server of this.servers) this.openSlot(server);
-    if (this.servers[0]) this.show(this.servers[0].id);
+    const front =
+      this.servers.find((s) => s.id === this.state.front) ?? this.servers[0];
+    if (front) this.show(front.id);
     else this.showPage("add");
+  }
+
+  // Writes the window state a moment after the last change, or now.
+  private remember(now = false) {
+    clearTimeout(this.saveTimer);
+    const write = () => {
+      if (this.win.isDestroyed()) return;
+      saveWindowState({
+        bounds: this.win.isMaximized()
+          ? this.state.bounds
+          : this.win.getNormalBounds(),
+        maximized: this.win.isMaximized(),
+        front: this.front ?? undefined,
+      });
+    };
+    if (now) write();
+    else this.saveTimer = setTimeout(write, 400);
   }
 
   // ---- views ----
@@ -143,8 +172,15 @@ export class MainWindow {
       if (!isMainFrame || code === -3) return;
       this.gate(server, "unreachable", `${description} (${code})`);
     });
+    // A notification click calls window.focus() inside the page, which
+    // is this event: bring that server forward, and the window with it.
     wc.on("focus", () => {
       if (this.front !== server.id) this.show(server.id);
+      if (!this.win.isFocused()) {
+        if (this.win.isMinimized()) this.win.restore();
+        this.win.show();
+        this.win.focus();
+      }
     });
     view.setVisible(false);
     this.win.contentView.addChildView(view);
@@ -198,6 +234,7 @@ export class MainWindow {
     this.front = id;
     slot.view.webContents.focus();
     this.pushChrome();
+    this.remember();
   }
 
   showPage(page?: string) {
