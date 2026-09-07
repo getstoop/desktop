@@ -1,4 +1,4 @@
-import { app, Menu, type MenuItemConstructorOptions, Tray } from "electron";
+import { Menu, type MenuItemConstructorOptions, Tray } from "electron";
 import { loadSettings, type Settings, saveSettings } from "./settings";
 import { trayIcon } from "./trayIcon";
 
@@ -70,15 +70,14 @@ export class AppTray {
   }
 }
 
+// Set by before-quit so a close during quit is a real close.
+let quitting = false;
+export function markQuitting() {
+  quitting = true;
+}
+
 // Whether a window close should hide instead of closing, given the
 // setting and whether the app is on its way out.
 export function hideOnClose(settings: Settings): boolean {
-  return settings.keepRunning && !app.isQuittingForReal;
-}
-
-declare module "electron" {
-  interface App {
-    // Set by before-quit so a close during quit is a real close.
-    isQuittingForReal?: boolean;
-  }
+  return settings.keepRunning && !quitting;
 }

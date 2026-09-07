@@ -1,13 +1,12 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { IPC, type Probe } from "../shared/bridge";
 import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
+import { markQuitting } from "./tray";
 import { MainWindow } from "./window";
 
 let main: MainWindow | null = null;
 
-app.on("before-quit", () => {
-  app.isQuittingForReal = true;
-});
+app.on("before-quit", () => markQuitting());
 
 app.whenReady().then(() => {
   main = new MainWindow();
