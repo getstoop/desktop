@@ -1,23 +1,16 @@
-import { nativeImage } from "electron";
+import { join } from "node:path";
+import { app, nativeImage } from "electron";
 
-// The steps mark as a monochrome template image, inlined so packaging
-// needs no extra files. The menu bar fits a status image into a 16 pt
-// box whatever its size, so the mark is drawn to fill exactly that, on
-// whole pixels, at 1x and 2x. macOS recolours a template image for the
-// menu bar; elsewhere it is drawn as is.
-const PNG_1X =
-  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAL0lEQVR42mNgGAV0AfVYMEngPxZMEMgDsT0Uk2VAPQ6NtDfgP5GYdgbUE4mHEwAA6XA04Vn+2EgAAAAASUVORK5CYII=";
-const PNG_2X =
-  "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAANElEQVR42u3OwQkAIAwAsW7u6HUBH4JFtCRw/4sAoIHczECPgbHo6kAeZOC/gSzOgAHgTRNk49OqJg6zrAAAAABJRU5ErkJggg==";
-
+// The steps mark for the menu bar / tray: a template image pair on
+// disk (trayTemplate.png and its @2x), loaded by path so macOS picks
+// the representation and the size itself, the way other apps' icons
+// are drawn. In development the files sit in resources/tray; packaged,
+// electron-builder copies them beside the app (extraResources).
 export function trayIcon() {
-  const image = nativeImage.createFromDataURL(
-    `data:image/png;base64,${PNG_1X}`,
-  );
-  image.addRepresentation({
-    scaleFactor: 2,
-    dataURL: `data:image/png;base64,${PNG_2X}`,
-  });
+  const dir = app.isPackaged
+    ? process.resourcesPath
+    : join(app.getAppPath(), "resources", "tray");
+  const image = nativeImage.createFromPath(join(dir, "trayTemplate.png"));
   image.setTemplateImage(true);
   return image;
 }

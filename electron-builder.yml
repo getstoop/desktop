@@ -6,6 +6,9 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: resources/tray
+    to: .
 mac:
   category: public.app-category.social-networking
   target:
