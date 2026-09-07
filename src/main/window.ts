@@ -190,7 +190,7 @@ export class MainWindow {
   private openSlot(server: Server): Slot {
     const ses = session.fromPartition(partitionFor(server));
     answerScreenShare(ses, () => (this.win.isDestroyed() ? null : this.win));
-    ses.setUserAgent(`${ses.getUserAgent()} Stoop-Desktop/${app.getVersion()}`);
+    ses.setUserAgent(desktopUserAgent(ses.getUserAgent()));
     const view = new WebContentsView({
       webPreferences: {
         session: ses,
@@ -496,6 +496,19 @@ export class MainWindow {
     ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   }
+}
+
+// A standard Chrome user agent with our marker appended, as the
+// contract says (docs/architecture/desktop.md). Electron's default
+// names Electron and the package, which is what identity providers
+// key on to refuse an embedded browser.
+export function desktopUserAgent(base: string): string {
+  const chrome = base
+    .replace(/\s?Electron\/\S+/, "")
+    .replace(/\s?stoop-desktop\/\S+/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return `${chrome} Stoop-Desktop/${app.getVersion()}`;
 }
 
 // Light text on a dark colour, dark text on a light one.
