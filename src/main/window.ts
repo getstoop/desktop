@@ -198,6 +198,9 @@ export class MainWindow {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
+        // The preload reads this back so window.stoop.version and the
+        // user agent name the same build.
+        additionalArguments: [`--stoop-desktop-version=${app.getVersion()}`],
       },
     });
     view.setBackgroundColor("#141517");

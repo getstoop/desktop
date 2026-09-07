@@ -10,7 +10,7 @@ import {
 // this object, never Node or ipcRenderer.
 const stoop: StoopBridge = {
   bridge: BRIDGE,
-  version: process.env.STOOP_DESKTOP_VERSION ?? "dev",
+  version: versionFromArgs(),
   platform: process.platform as StoopBridge["platform"],
   setBadge(count) {
     ipcRenderer.send(IPC.setBadge, Math.max(0, Math.floor(count)));
@@ -25,3 +25,12 @@ const stoop: StoopBridge = {
 };
 
 contextBridge.exposeInMainWorld("stoop", stoop);
+
+// Main passes the app version as a process argument, the one channel a
+// sandboxed preload can read before any IPC.
+function versionFromArgs(): string {
+  const arg = process.argv.find((a) =>
+    a.startsWith("--stoop-desktop-version="),
+  );
+  return arg ? arg.slice("--stoop-desktop-version=".length) : "dev";
+}
