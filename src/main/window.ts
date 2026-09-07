@@ -189,7 +189,7 @@ export class MainWindow {
 
   private openSlot(server: Server): Slot {
     const ses = session.fromPartition(partitionFor(server));
-    answerScreenShare(ses);
+    answerScreenShare(ses, () => (this.win.isDestroyed() ? null : this.win));
     ses.setUserAgent(`${ses.getUserAgent()} Stoop-Desktop/${app.getVersion()}`);
     const view = new WebContentsView({
       webPreferences: {

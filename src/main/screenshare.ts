@@ -21,14 +21,14 @@ import { IPC, type PickerSource } from "../shared/bridge";
 
 const shellPreload = join(__dirname, "../preload/shell.js");
 
-export function answerScreenShare(session: Session) {
+// parent is the window the picker should sit over.
+export function answerScreenShare(
+  session: Session,
+  parent: () => BrowserWindow | null,
+) {
   session.setDisplayMediaRequestHandler(
-    (request, callback) => {
-      void pick(
-        request.frame
-          ? BrowserWindow.fromWebContents(request.frame as never)
-          : null,
-      )
+    (_request, callback) => {
+      void pick(parent())
         .then(callback)
         .catch(() => callback({}));
     },
