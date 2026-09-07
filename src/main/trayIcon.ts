@@ -1,11 +1,10 @@
 import { nativeImage } from "electron";
 
-// The steps mark as a monochrome template image, 24 by 16 with a 2x
-// representation, inlined so packaging needs no extra files. The menu
-// bar fits an image to about 16 pt tall, so the mark is drawn wide and
-// edge to edge to keep its height. macOS
-// recolours a template image for the menu bar; elsewhere it is drawn
-// as is.
+// The steps mark as a monochrome template image, inlined so packaging
+// needs no extra files. The menu bar fits a status image into a 16 pt
+// box whatever its size, so the mark is drawn to fill exactly that, on
+// whole pixels, at 1x and 2x. macOS recolours a template image for the
+// menu bar; elsewhere it is drawn as is.
 const PNG_1X =
   "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAL0lEQVR42mNgGAV0AfVYMEngPxZMEMgDsT0Uk2VAPQ6NtDfgP5GYdgbUE4mHEwAA6XA04Vn+2EgAAAAASUVORK5CYII=";
 const PNG_2X =
