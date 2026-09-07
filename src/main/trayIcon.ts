@@ -1,7 +1,9 @@
 import { nativeImage } from "electron";
 
-// The steps mark as a monochrome template image, 22 px edge to edge with a 2x
-// representation, inlined so packaging needs no extra files. macOS
+// The steps mark as a monochrome template image, 24 by 16 with a 2x
+// representation, inlined so packaging needs no extra files. The menu
+// bar fits an image to about 16 pt tall, so the mark is drawn wide and
+// edge to edge to keep its height. macOS
 // recolours a template image for the menu bar; elsewhere it is drawn
 // as is.
 const PNG_1X =
