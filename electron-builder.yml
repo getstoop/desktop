@@ -9,6 +9,12 @@ files:
 extraResources:
   - from: resources/tray
     to: .
+# stoop:// — the Info.plist entry on macOS and the registry keys the NSIS
+# installer writes on Windows. Linux carries it on the desktop entry, so
+# the .deb registers it and an AppImage, having no install step, may not.
+protocols:
+  - name: Stoop
+    schemes: [stoop]
 mac:
   category: public.app-category.social-networking
   target:
@@ -19,6 +25,8 @@ win:
 linux:
   category: Network;Chat
   target: [AppImage, deb]
+  mimeTypes:
+    - x-scheme-handler/stoop
 publish:
   provider: github
   owner: getstoop

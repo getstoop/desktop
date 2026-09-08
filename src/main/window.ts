@@ -17,6 +17,7 @@ import type {
 } from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
 import { type ThemeId, themePreference } from "../shared/themes";
+import { type DeepLink, targetUrl } from "./deeplink";
 import { meetsMinimum, probeServer } from "./probe";
 import { answerScreenShare } from "./screenshare";
 import {
@@ -68,6 +69,8 @@ interface Slot {
   // The server publishes a bridge level above what this app implements.
   newer: boolean;
   version: string;
+  // URL a deep link asked for, loaded by the next checkAndLoad.
+  pending?: string;
 }
 
 // A loaded server is asked again this long after its last answer, when
@@ -89,6 +92,8 @@ export class MainWindow {
   private theme: ThemeId;
   private switcher: Switcher;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
+  // The server an `open` link offered to add, and the path it named.
+  private invited: { server: string; path: string } | null = null;
 
   constructor() {
     this.tray = new AppTray({
@@ -317,9 +322,14 @@ export class MainWindow {
     slot.version = probe.version;
     const wasGated = slot.gated;
     slot.gated = false;
+    // A deep link waiting on this slot replaces the server's root.
+    const pending = slot.pending;
+    slot.pending = undefined;
     if (!slot.loaded) {
       slot.loaded = true;
-      void slot.view.webContents.loadURL(`${server.url}/`);
+      void slot.view.webContents.loadURL(pending ?? `${server.url}/`);
+    } else if (pending) {
+      void slot.view.webContents.loadURL(pending);
     }
     if (wasGated && this.front === server.id) this.show(server.id);
     this.pushChrome();
@@ -381,6 +391,8 @@ export class MainWindow {
   }
 
   showPage(page?: string) {
+    // The add page opened any other way is not the invitation.
+    if (page === "add") this.invited = null;
     if (page) this.load(this.page, page);
     for (const s of this.slots.values()) s.view.setVisible(false);
     this.page.setVisible(true);
@@ -453,7 +465,13 @@ export class MainWindow {
     const server = newServer(url, name);
     this.servers.push(server);
     saveServers(this.servers);
-    this.openSlot(server);
+    const slot = this.openSlot(server);
+    // Added from an invitation: the first load goes to the path it named.
+    if (this.invited?.server === url) {
+      const target = targetUrl({ action: "open", ...this.invited }, url);
+      this.invited = null;
+      if (target) slot.pending = target;
+    }
     this.show(server.id);
     this.rebuildAppMenu();
     this.tray.refresh();
@@ -483,6 +501,43 @@ export class MainWindow {
   retryServer(id: string) {
     const server = this.servers.find((s) => s.id === id);
     if (server) void this.checkAndLoad(server);
+  }
+
+  // ---- deep links ----
+
+  // Reveals the window, then navigates the named server's view, or offers
+  // to add a server that is not in the list.
+  openDeepLink(link: DeepLink) {
+    this.reveal();
+    const server = this.servers.find((s) => s.url === link.server);
+    if (!server) {
+      // Only `open` may introduce a server; an `auth` link naming one
+      // that is not in the list is dropped.
+      if (link.action === "open") this.offerServer(link);
+      return;
+    }
+    const target = targetUrl(link, server.url);
+    if (!target) return;
+    const known = this.slots.get(server.id);
+    const slot = known ?? this.openSlot(server);
+    if (slot.loaded && !slot.gated) {
+      // The view already open for this server: a same-origin load keeps
+      // its session storage, which the auth hand-back reads.
+      void slot.view.webContents.loadURL(target);
+    } else {
+      slot.pending = target;
+      // openSlot already probes; an existing slot is probed again.
+      if (known) void this.checkAndLoad(server);
+    }
+    this.show(server.id);
+  }
+
+  // The add page with the address filled in, holding the path until the
+  // server is added. Nothing is added here.
+  private offerServer(link: DeepLink & { action: "open" }) {
+    this.invited = { server: link.server, path: link.path };
+    this.load(this.page, "add", `?url=${encodeURIComponent(link.server)}`);
+    this.showPage();
   }
 
   // ---- the switcher ----

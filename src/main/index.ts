@@ -1,15 +1,50 @@
+import { resolve } from "node:path";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { IPC, type Probe } from "../shared/bridge";
+import { type DeepLink, linkFromArgv, parseDeepLink, SCHEME } from "./deeplink";
 import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
 import type { Settings } from "./settings";
 import { markQuitting } from "./tray";
 import { MainWindow } from "./window";
 
 let main: MainWindow | null = null;
+// Links that arrived before `main` existed; drained at the end of start().
+const waiting: DeepLink[] = [];
 
-app.on("before-quit", () => markQuitting());
+function route(link: DeepLink | null) {
+  if (!link) return;
+  if (main) main.openDeepLink(link);
+  else waiting.push(link);
+}
 
-app.whenReady().then(() => {
+// A second launch forwards its link to the first and quits.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, argv) => {
+    route(linkFromArgv(argv));
+    main?.reveal();
+  });
+  // macOS delivers links here, and may do it before `ready`.
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    route(parseDeepLink(url));
+  });
+  // Windows and Linux: the link that started this launch.
+  route(linkFromArgv(process.argv));
+
+  app.on("before-quit", () => markQuitting());
+  app.whenReady().then(start);
+
+  // With the window hidden in the tray the app is still running; only a
+  // real close of the last window ends it, and never on macOS.
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
+  });
+}
+
+function start() {
+  claimScheme();
   main = new MainWindow();
   app.setLoginItemSettings({ openAtLogin: main.tray.settings.launchAtLogin });
   main.rebuildAppMenu();
@@ -87,7 +122,19 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) main = new MainWindow();
     else main?.reveal();
   });
-});
+
+  for (const link of waiting.splice(0)) main.openDeepLink(link);
+}
+
+// Registers stoop:// for this binary; the installer does it too.
+// Unpackaged, the binary is Electron, so the entry point goes with it.
+function claimScheme() {
+  if (!app.isPackaged && process.argv.length >= 2)
+    app.setAsDefaultProtocolClient(SCHEME, process.execPath, [
+      resolve(process.argv[1]),
+    ]);
+  else app.setAsDefaultProtocolClient(SCHEME);
+}
 
 // A patch from the settings page is remote input: only the fields that
 // exist, each as the type it should be. The theme is checked by main.
@@ -100,9 +147,3 @@ function settingsPatch(raw: unknown): Partial<Settings> {
     out.theme = p.theme as Settings["theme"];
   return out;
 }
-
-// With the window hidden in the tray the app is still running; only a
-// real close of the last window ends it, and never on macOS.
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});

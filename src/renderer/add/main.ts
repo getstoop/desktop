@@ -7,7 +7,18 @@ const input = document.getElementById("url") as HTMLInputElement;
 const error = document.getElementById("error") as HTMLParagraphElement;
 const detail = document.getElementById("detail") as HTMLParagraphElement;
 const submit = document.getElementById("submit") as HTMLButtonElement;
-input.focus();
+const subtitle = document.getElementById("subtitle") as HTMLParagraphElement;
+
+// An address from a deep link arrives in the query string: filled in,
+// not submitted.
+const invited = new URLSearchParams(location.search).get("url");
+if (invited) {
+  input.value = invited;
+  subtitle.textContent = `A link asks to open ${invited}. Add it to go there: it is the address you would use in a browser, and you sign in the same way.`;
+  submit.focus();
+} else {
+  input.focus();
+}
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
