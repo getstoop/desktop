@@ -69,8 +69,7 @@ interface Slot {
   // The server publishes a bridge level above what this app implements.
   newer: boolean;
   version: string;
-  // Where a deep link asked this server to go, held until the view is
-  // in a state to be sent somewhere.
+  // URL a deep link asked for, loaded by the next checkAndLoad.
   pending?: string;
 }
 
@@ -93,7 +92,7 @@ export class MainWindow {
   private theme: ThemeId;
   private switcher: Switcher;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
-  // The server an `open` link offered to add, and where it meant to go.
+  // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
 
   constructor() {
@@ -323,8 +322,7 @@ export class MainWindow {
     slot.version = probe.version;
     const wasGated = slot.gated;
     slot.gated = false;
-    // A link that arrived while this server was gated or not yet loaded
-    // has been waiting for this moment; it goes there instead of home.
+    // A deep link waiting on this slot replaces the server's root.
     const pending = slot.pending;
     slot.pending = undefined;
     if (!slot.loaded) {
@@ -393,8 +391,7 @@ export class MainWindow {
   }
 
   showPage(page?: string) {
-    // The add page reached any other way is not the invitation: whatever
-    // a link asked for is no longer what this is.
+    // The add page opened any other way is not the invitation.
     if (page === "add") this.invited = null;
     if (page) this.load(this.page, page);
     for (const s of this.slots.values()) s.view.setVisible(false);
@@ -469,8 +466,7 @@ export class MainWindow {
     this.servers.push(server);
     saveServers(this.servers);
     const slot = this.openSlot(server);
-    // Added because a link asked for it: the first load goes where the
-    // link pointed, checked once more against the server just added.
+    // Added from an invitation: the first load goes to the path it named.
     if (this.invited?.server === url) {
       const target = targetUrl({ action: "open", ...this.invited }, url);
       this.invited = null;
@@ -509,17 +505,14 @@ export class MainWindow {
 
   // ---- deep links ----
 
-  // A stoop:// link from the operating system. The window comes forward
-  // either way; where it lands depends on whether this computer already
-  // knows the server the link names.
+  // Reveals the window, then navigates the named server's view, or offers
+  // to add a server that is not in the list.
   openDeepLink(link: DeepLink) {
     this.reveal();
     const server = this.servers.find((s) => s.url === link.server);
     if (!server) {
-      // Only `open` may introduce a server. An `auth` link carries a
-      // sign-in code, and a page that could walk someone into adding a
-      // server and then signing in on it is the attack worth refusing;
-      // an unknown one is dropped and the code expires unused.
+      // Only `open` may introduce a server; an `auth` link naming one
+      // that is not in the list is dropped.
       if (link.action === "open") this.offerServer(link);
       return;
     }
@@ -528,22 +521,19 @@ export class MainWindow {
     const known = this.slots.get(server.id);
     const slot = known ?? this.openSlot(server);
     if (slot.loaded && !slot.gated) {
-      // The same view, not a new one: a same-origin load keeps the
-      // page's session storage, and the sign-in hand-back depends on it
-      // — the verifier was left there before the browser took over.
+      // The view already open for this server: a same-origin load keeps
+      // its session storage, which the auth hand-back reads.
       void slot.view.webContents.loadURL(target);
     } else {
       slot.pending = target;
-      // A slot just made is already asking; one that was gated or never
-      // loaded is asked again now.
+      // openSlot already probes; an existing slot is probed again.
       if (known) void this.checkAndLoad(server);
     }
     this.show(server.id);
   }
 
-  // An `open` link for a server this computer does not know: the add
-  // page with the address filled in, and the path held until the person
-  // presses Open. A link never adds a server on its own.
+  // The add page with the address filled in, holding the path until the
+  // server is added. Nothing is added here.
   private offerServer(link: DeepLink & { action: "open" }) {
     this.invited = { server: link.server, path: link.path };
     this.load(this.page, "add", `?url=${encodeURIComponent(link.server)}`);

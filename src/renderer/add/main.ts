@@ -9,9 +9,8 @@ const detail = document.getElementById("detail") as HTMLParagraphElement;
 const submit = document.getElementById("submit") as HTMLButtonElement;
 const subtitle = document.getElementById("subtitle") as HTMLParagraphElement;
 
-// A stoop:// link for a server this computer does not know sends the
-// address here rather than adding it: the page says where it came from
-// and leaves the decision where it belongs.
+// An address from a deep link arrives in the query string: filled in,
+// not submitted.
 const invited = new URLSearchParams(location.search).get("url");
 if (invited) {
   input.value = invited;

@@ -8,9 +8,7 @@ import { markQuitting } from "./tray";
 import { MainWindow } from "./window";
 
 let main: MainWindow | null = null;
-// Links that arrived before there was a window to route them to: macOS
-// can deliver open-url before the app is ready, and a cold start on
-// Windows or Linux carries the link in argv.
+// Links that arrived before `main` existed; drained at the end of start().
 const waiting: DeepLink[] = [];
 
 function route(link: DeepLink | null) {
@@ -19,9 +17,7 @@ function route(link: DeepLink | null) {
   else waiting.push(link);
 }
 
-// One instance owns the scheme. A second launch hands its link to the
-// first and stops, so a link never opens a second window; nothing below
-// has touched the tray, the settings or a window yet.
+// A second launch forwards its link to the first and quits.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -130,9 +126,8 @@ function start() {
   for (const link of waiting.splice(0)) main.openDeepLink(link);
 }
 
-// Claim stoop:// for this app. A packaged app is named by the installer
-// as well; in dev the running binary is Electron itself, so the path to
-// this checkout has to go with it or the OS launches a bare Electron.
+// Registers stoop:// for this binary; the installer does it too.
+// Unpackaged, the binary is Electron, so the entry point goes with it.
 function claimScheme() {
   if (!app.isPackaged && process.argv.length >= 2)
     app.setAsDefaultProtocolClient(SCHEME, process.execPath, [
