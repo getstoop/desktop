@@ -31,7 +31,9 @@ body.picker {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   align-content: start;
-  padding: 2px;
+  /* Room for the selected outline, which sits 2px outside the button
+     and is clipped at this container's padding edge. */
+  padding: 6px;
 }
 .source {
   display: flex;

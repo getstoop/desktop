@@ -190,7 +190,11 @@ export class MainWindow {
 
   private openSlot(server: Server): Slot {
     const ses = session.fromPartition(partitionFor(server));
-    answerScreenShare(ses, () => (this.win.isDestroyed() ? null : this.win));
+    answerScreenShare(
+      ses,
+      () => (this.win.isDestroyed() ? null : this.win),
+      () => this.palette(),
+    );
     ses.setUserAgent(desktopUserAgent(ses.getUserAgent()));
     const view = new WebContentsView({
       webPreferences: {
