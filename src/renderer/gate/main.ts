@@ -1,6 +1,10 @@
 // One page for every reason a server cannot be shown: too old,
 // unreachable, or no longer answering as Stoop. Main passes the reason
 // in the query string.
+import { followTheme } from "../theme";
+
+followTheme();
+
 const q = new URLSearchParams(location.search);
 const id = q.get("id") ?? "";
 const name = q.get("name") ?? "";
@@ -49,5 +53,3 @@ if (kind === "too-old") {
   "click",
   () => window.shell.removeServer(id),
 );
-
-export {};

@@ -1,6 +1,7 @@
 // window.shell, as preload/shell.ts exposes it to the app's own pages.
 import type {
   ChromeState,
+  Palette,
   PickerSource,
   Probe,
   SettingsView,
@@ -27,6 +28,8 @@ declare global {
       pickerChoose(choice: { id: string; audio: boolean } | null): void;
       openExternal(url: string): void;
       windowAction(action: "minimize" | "maximize" | "close"): void;
+      getTheme(): Promise<Palette>;
+      onTheme(handler: (palette: Palette) => void): void;
       onChromeState(handler: (state: ChromeState) => void): void;
     };
   }

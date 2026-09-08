@@ -8,7 +8,7 @@ import {
   shell,
   WebContentsView,
 } from "electron";
-import type { ChromeState, SettingsView } from "../shared/bridge";
+import type { ChromeState, Palette, SettingsView } from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
 import { meetsMinimum, probeServer } from "./probe";
 import { answerScreenShare } from "./screenshare";
@@ -20,6 +20,7 @@ import {
   saveServers,
 } from "./servers";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
+import { derivePalette, readTokens } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
 
 // One window. The shell draws the title strip (a small view across the
@@ -50,6 +51,8 @@ interface Slot {
   probedAt: number;
   // Why the gate page stands in, for showing it again on a switch.
   gate?: { kind: string; detail: string };
+  // The web app's own colour tokens, as read off the page.
+  tokens: Partial<Palette>;
   // The server publishes a bridge level above what this app implements.
   newer: boolean;
   version: string;
@@ -189,7 +192,11 @@ export class MainWindow {
 
   private openSlot(server: Server): Slot {
     const ses = session.fromPartition(partitionFor(server));
-    answerScreenShare(ses, () => (this.win.isDestroyed() ? null : this.win));
+    answerScreenShare(
+      ses,
+      () => (this.win.isDestroyed() ? null : this.win),
+      () => this.palette(),
+    );
     ses.setUserAgent(desktopUserAgent(ses.getUserAgent()));
     const view = new WebContentsView({
       webPreferences: {
@@ -212,6 +219,7 @@ export class MainWindow {
       loaded: false,
       gated: false,
       probedAt: 0,
+      tokens: {},
       newer: false,
       version: "",
     };
@@ -227,11 +235,14 @@ export class MainWindow {
         void shell.openExternal(next);
       }
     });
+    // theme-color paints the strip and the window behind everything;
+    // the page's own tokens paint the shell's pages. The web app stamps
+    // both together, so one event refreshes both.
     wc.on("did-change-theme-color", (_event, color) => {
-      if (!color) return;
-      slot.color = color;
-      if (this.front === server.id) this.pushChrome();
+      if (color) slot.color = color;
+      void this.readTheme(slot);
     });
+    wc.on("did-finish-load", () => void this.readTheme(slot));
     wc.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
       if (!isMainFrame || code === -3) return;
       slot.loaded = false;
@@ -341,6 +352,20 @@ export class MainWindow {
     this.pushChrome();
   }
 
+  // What the shell's own pages paint with: the colours of the server in
+  // front, its own where the page gave them up. A picker window asks for
+  // it as it loads; the page view is told whenever it changes.
+  palette(): Palette {
+    const slot = this.front ? this.slots.get(this.front) : undefined;
+    return { ...derivePalette(slot?.color), ...slot?.tokens };
+  }
+
+  private async readTheme(slot: Slot) {
+    if (slot.view.webContents.isDestroyed()) return;
+    slot.tokens = await readTokens(slot.view.webContents);
+    if (this.front === slot.server.id) this.pushChrome();
+  }
+
   private pushChrome() {
     const slot = this.front ? this.slots.get(this.front) : undefined;
     const color = slot?.color ?? "#141517";
@@ -354,6 +379,7 @@ export class MainWindow {
     };
     this.win.setBackgroundColor(color);
     this.chrome.webContents.send(IPC.chromeState, state);
+    this.page.webContents.send(IPC.theme, this.palette());
   }
 
   // ---- servers ----

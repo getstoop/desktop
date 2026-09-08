@@ -10,10 +10,18 @@
   --text-muted: #9a9da5;
   --accent: #e2725b;
   --accent-soft: rgba(226, 114, 91, 0.2);
+  --on-accent: #ffffff;
   --danger: #e05c5c;
 }
 * {
   box-sizing: border-box;
+}
+/* Scrollbars in the theme's colours rather than the platform's. Both
+   properties inherit, so the root sets them for every scroller. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 40%, transparent)
+    transparent;
 }
 body {
   margin: 0;
@@ -37,7 +45,7 @@ button {
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
 }
 .primary:disabled {

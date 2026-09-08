@@ -7,7 +7,7 @@ import {
   type Session,
   type Streams,
 } from "electron";
-import { IPC, type PickerSource } from "../shared/bridge";
+import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 
 // getDisplayMedia in a page fails until the main process answers it;
 // there is no built-in picker. macOS 15 and later has a system picker,
@@ -25,10 +25,11 @@ const shellPreload = join(__dirname, "../preload/shell.js");
 export function answerScreenShare(
   session: Session,
   parent: () => BrowserWindow | null,
+  palette: () => Palette,
 ) {
   session.setDisplayMediaRequestHandler(
     (_request, callback) => {
-      void pick(parent())
+      void pick(parent(), palette())
         .then(callback)
         .catch(() => callback({}));
     },
@@ -36,7 +37,10 @@ export function answerScreenShare(
   );
 }
 
-async function pick(parent: BrowserWindow | null): Promise<Streams> {
+async function pick(
+  parent: BrowserWindow | null,
+  palette: Palette,
+): Promise<Streams> {
   const sources = await desktopCapturer.getSources({
     types: ["screen", "window"],
     thumbnailSize: { width: 320, height: 200 },
@@ -45,7 +49,7 @@ async function pick(parent: BrowserWindow | null): Promise<Streams> {
   if (sources.length === 0) return {};
   const wayland = process.platform === "linux" && !!process.env.WAYLAND_DISPLAY;
   if (wayland || sources.length === 1) return streams(sources[0], false);
-  const choice = await ask(parent, sources);
+  const choice = await ask(parent, sources, palette);
   if (!choice) return {};
   const source = sources.find((s) => s.id === choice.id);
   return source ? streams(source, choice.audio) : {};
@@ -69,6 +73,7 @@ interface Choice {
 function ask(
   parent: BrowserWindow | null,
   sources: DesktopCapturerSource[],
+  palette: Palette,
 ): Promise<Choice | null> {
   return new Promise((resolve) => {
     const win = new BrowserWindow({
@@ -81,7 +86,7 @@ function ask(
       parent: parent ?? undefined,
       modal: !!parent,
       show: false,
-      backgroundColor: "#24262b",
+      backgroundColor: palette.panel,
       webPreferences: {
         preload: shellPreload,
         contextIsolation: true,
