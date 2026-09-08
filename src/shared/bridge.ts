@@ -23,7 +23,6 @@ export const IPC = {
   addServer: "shell:add-server",
   removeServer: "shell:remove-server",
   retryServer: "shell:retry-server",
-  openMenu: "shell:open-menu",
   windowAction: "shell:window-action",
   openExternal: "shell:open-external",
   chromeState: "shell:chrome-state",
@@ -35,6 +34,10 @@ export const IPC = {
   pickerChoice: "shell:picker-choice",
   getTheme: "shell:get-theme",
   theme: "shell:theme",
+  openSwitcher: "shell:open-switcher",
+  switcherRows: "shell:switcher-rows",
+  chooseServer: "shell:choose-server",
+  closeSwitcher: "shell:close-switcher",
 } as const;
 
 // The colours the shell's own pages paint with: the web app's own tokens
@@ -53,7 +56,30 @@ export interface Palette {
   accentSoft: string;
   onAccent: string;
   danger: string;
+  warn: string;
   scheme: "dark" | "light";
+}
+
+// One server as the switcher panel draws it. Everything here is already
+// known to main; nothing is asked of the server.
+export interface ServerRow {
+  id: string;
+  name: string;
+  host: string;
+  badge: number;
+  state: "ok" | "unreachable" | "too-old" | "not-stoop";
+  // A colour from the server's origin, not from anyone's theme.
+  tile: string;
+  tileText: string;
+  current: boolean;
+  accelerator: string;
+}
+
+// What the switcher panel is given when it opens: the rows, and where to
+// sit under the strip button.
+export interface SwitcherView {
+  rows: ServerRow[];
+  left: number;
 }
 
 // One thing the screen picker can offer.

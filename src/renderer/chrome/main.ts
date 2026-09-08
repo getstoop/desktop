@@ -5,7 +5,7 @@ const controls = document.getElementById("controls") as HTMLDivElement;
 const update = document.getElementById("update") as HTMLButtonElement;
 update.addEventListener("click", () => window.shell.updateApp());
 
-server.addEventListener("click", () => window.shell.openMenu());
+server.addEventListener("click", () => window.shell.openSwitcher());
 for (const button of controls.querySelectorAll<HTMLButtonElement>("button")) {
   button.addEventListener("click", () => {
     window.shell.windowAction(
