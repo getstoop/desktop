@@ -75,14 +75,17 @@ export class Switcher {
     });
   }
 
+  // Runs once the window has closed, which is after it is destroyed: a
+  // destroyed window has taken its views with it, and touching it throws.
   destroy() {
-    if (!this.view) return;
-    this.win.contentView.removeChildView(this.view);
-    this.view.webContents.close();
+    const view = this.view;
+    if (!view) return;
     this.view = null;
     this.loaded = false;
     this.pending = null;
     this.open = false;
+    if (!this.win.isDestroyed()) this.win.contentView.removeChildView(view);
+    if (!view.webContents.isDestroyed()) view.webContents.close();
   }
 
   private ensure(): WebContentsView {
