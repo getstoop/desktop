@@ -10,6 +10,7 @@
   --text-muted: #9a9da5;
   --accent: #e2725b;
   --accent-soft: rgba(226, 114, 91, 0.2);
+  --on-accent: #ffffff;
   --danger: #e05c5c;
 }
 * {
@@ -37,7 +38,7 @@ button {
   border: none;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
 }
 .primary:disabled {

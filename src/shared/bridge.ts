@@ -37,9 +37,10 @@ export const IPC = {
   theme: "shell:theme",
 } as const;
 
-// The colours the shell's own pages paint with, derived in main from
-// the front server's theme-color. shell.css carries the same names as
-// literals, so a page renders before this arrives.
+// The colours the shell's own pages paint with: the web app's own tokens
+// where main could read them, derived from theme-color where it could
+// not. shell.css carries the same names as literals, so a page renders
+// before this arrives.
 export interface Palette {
   canvas: string;
   surface: string;
@@ -48,6 +49,10 @@ export interface Palette {
   border: string;
   text: string;
   textMuted: string;
+  accent: string;
+  accentSoft: string;
+  onAccent: string;
+  danger: string;
   scheme: "dark" | "light";
 }
 

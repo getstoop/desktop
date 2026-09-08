@@ -1,3 +1,4 @@
+import type { WebContents } from "electron";
 import type { Palette } from "../shared/bridge";
 
 // The web app publishes one colour: the active theme's --canvas, as
@@ -33,6 +34,58 @@ const LIGHT = {
   muted: 38,
 };
 
+// What the web app calls each colour. The shell reads these off the
+// page it is already showing, so a server that will never be updated
+// still hands over its real accent. docs/architecture/desktop.md in the
+// server repo lists them as part of the contract.
+const TOKENS: Record<keyof Omit<Palette, "scheme">, string> = {
+  canvas: "--canvas",
+  surface: "--surface",
+  panel: "--panel",
+  raised: "--raised",
+  border: "--border",
+  text: "--text",
+  textMuted: "--text-muted",
+  accent: "--accent",
+  accentSoft: "--accent-soft",
+  onAccent: "--on-accent",
+  danger: "--danger",
+};
+
+// A page is remote content, so its answers are colours or nothing.
+const COLOUR = /^(#[0-9a-f]{3,8}|(rgb|hsl)a?\([0-9a-z%.,\s/]{1,48}\))$/i;
+
+const script = `(() => {
+  const s = getComputedStyle(document.documentElement);
+  const out = {};
+  for (const [key, name] of ${JSON.stringify(Object.entries(TOKENS))}) {
+    out[key] = s.getPropertyValue(name).trim();
+  }
+  out.scheme = s.colorScheme.includes("light") ? "light" : "dark";
+  return out;
+})()`;
+
+export async function readTokens(
+  contents: WebContents,
+): Promise<Partial<Palette>> {
+  try {
+    const raw: unknown = await contents.executeJavaScript(script, true);
+    if (!raw || typeof raw !== "object") return {};
+    const page = raw as Record<string, unknown>;
+    const out: Partial<Palette> = {};
+    for (const key of Object.keys(TOKENS) as (keyof typeof TOKENS)[]) {
+      const value = page[key];
+      if (typeof value === "string" && COLOUR.test(value)) out[key] = value;
+    }
+    if (page.scheme === "light" || page.scheme === "dark")
+      out.scheme = page.scheme;
+    return out;
+  } catch {
+    // The page is gone, or never loaded: the derived palette stands.
+    return {};
+  }
+}
+
 export function derivePalette(canvas: string | undefined): Palette {
   const base = toHsl(parse(canvas) ?? parse(BROWNSTONE));
   const light = base.l > 60;
@@ -48,6 +101,12 @@ export function derivePalette(canvas: string | undefined): Palette {
     border: hex(shade(step.border)),
     text: hex(readable(text, panel, light)),
     textMuted: hex({ h: base.h, s: base.s * 0.5, l: step.muted }),
+    // One colour says nothing about an accent, so Brownstone's stands
+    // until the page hands over its own.
+    accent: "#e2725b",
+    accentSoft: "rgba(226, 114, 91, 0.2)",
+    onAccent: "#ffffff",
+    danger: light ? "#c74a4a" : "#e05c5c",
     scheme: light ? "light" : "dark",
   };
 }

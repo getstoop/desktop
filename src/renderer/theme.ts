@@ -13,6 +13,10 @@ function paint(palette: Palette) {
   root.style.setProperty("--border", palette.border);
   root.style.setProperty("--text", palette.text);
   root.style.setProperty("--text-muted", palette.textMuted);
+  root.style.setProperty("--accent", palette.accent);
+  root.style.setProperty("--accent-soft", palette.accentSoft);
+  root.style.setProperty("--on-accent", palette.onAccent);
+  root.style.setProperty("--danger", palette.danger);
   root.style.colorScheme = palette.scheme;
 }
 
