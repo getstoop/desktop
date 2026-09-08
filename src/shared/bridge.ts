@@ -2,7 +2,9 @@
 // shape in web/src/api/platform.ts and publishes the level it speaks from
 // GET /version; the two move together. docs/architecture/desktop.md there.
 
-export const BRIDGE = 1;
+import type { ThemePreference } from "./themes";
+
+export const BRIDGE = 2;
 
 export type ShortcutName = "pushToTalk";
 
@@ -12,6 +14,19 @@ export interface StoopBridge {
   platform: "darwin" | "win32" | "linux";
   setBadge(count: number): void;
   onShortcut(name: ShortcutName, handler: (down: boolean) => void): () => void;
+  // Bridge 2. The theme the shell wears, whole: the page paints from
+  // the tokens and hides its own picker.
+  theme: ShellTheme;
+  onTheme(handler: (theme: ShellTheme) => void): () => void;
+}
+
+// The shape of a theme, as it crosses the bridge: no name, only what
+// it is made of. tokens is keyed by CSS custom property name (--canvas,
+// --text, …), the names web/src/themes.css defines; a page applies
+// them as they are.
+export interface ShellTheme {
+  scheme: "dark" | "light";
+  tokens: Record<string, string>;
 }
 
 // IPC channel names, one place so main and preload cannot drift.
@@ -19,6 +34,7 @@ export interface StoopBridge {
 export const IPC = {
   setBadge: "stoop:set-badge",
   shortcut: "stoop:shortcut",
+  stoopTheme: "stoop:theme",
   probe: "shell:probe",
   addServer: "shell:add-server",
   removeServer: "shell:remove-server",
@@ -40,23 +56,27 @@ export const IPC = {
   closeSwitcher: "shell:close-switcher",
 } as const;
 
-// The colours the shell's own pages paint with: the web app's own tokens
-// where main could read them, derived from theme-color where it could
-// not. shell.css carries the same names as literals, so a page renders
-// before this arrives.
+// One theme's tokens, the active row of shared/themes.ts: what the
+// shell's own pages paint with, and what a server page is handed.
+// shell.css carries the colours as literals, so a page renders before
+// this arrives.
 export interface Palette {
   canvas: string;
   surface: string;
   panel: string;
   raised: string;
+  hover: string;
   border: string;
   text: string;
   textMuted: string;
   accent: string;
   accentSoft: string;
   onAccent: string;
-  danger: string;
+  ok: string;
   warn: string;
+  danger: string;
+  shadow: string;
+  scrim: string;
   scheme: "dark" | "light";
 }
 
@@ -93,6 +113,7 @@ export interface PickerSource {
 export interface SettingsView {
   keepRunning: boolean;
   launchAtLogin: boolean;
+  theme: ThemePreference;
   version: string;
   platform: string;
   // The server to go back to, by name, when there is one.
@@ -105,7 +126,7 @@ export interface ChromeState {
   name: string;
   // Another server has unread activity.
   dot: boolean;
-  // The front server's theme colour, and text that reads on it.
+  // The theme's canvas, and text that reads on it.
   color: string;
   symbol: string;
   platform: "darwin" | "win32" | "linux" | string;

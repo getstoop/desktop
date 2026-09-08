@@ -17,6 +17,7 @@
         </button>
         <p class="eyebrow">App settings</p>
         <button type="button" class="nav-link active" data-section="general">General</button>
+        <button type="button" class="nav-link" data-section="appearance">Appearance</button>
         <button type="button" class="nav-link" data-section="servers">Servers</button>
         <button type="button" class="nav-link" data-section="about">About</button>
       </nav>
@@ -41,6 +42,18 @@
               </div>
               <div class="setting-control"><input id="keepRunning" type="checkbox" /></div>
             </div>
+          </section>
+
+          <section id="appearance" class="section" hidden>
+            <header class="settings-head">
+              <h1>Appearance</h1>
+              <p>How Stoop looks in this app. Every server you open here wears it, and so do the app's own screens. A server opened in a browser keeps the theme chosen there.</p>
+            </header>
+            <div id="themeCards" class="theme-cards"></div>
+            <label class="theme-system">
+              <input id="followSystem" type="checkbox" />
+              <span>Follow the system's light/dark setting<span id="systemHint" class="hint"></span></span>
+            </label>
           </section>
 
           <section id="servers" class="section" hidden>

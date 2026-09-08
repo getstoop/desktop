@@ -16,6 +16,7 @@ import type {
   SwitcherView,
 } from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
+import { type ThemeId, themePreference } from "../shared/themes";
 import { meetsMinimum, probeServer } from "./probe";
 import { answerScreenShare } from "./screenshare";
 import {
@@ -25,9 +26,10 @@ import {
   type Server,
   saveServers,
 } from "./servers";
+import type { Settings } from "./settings";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
 import { Switcher } from "./switcher";
-import { derivePalette, readTokens } from "./theme";
+import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
 
 // One window. The shell draws the title strip (a small view across the
@@ -35,6 +37,12 @@ import { AppTray, hideOnClose } from "./tray";
 // another server has unread) and places one view per server beneath it,
 // one visible at a time. The app's own pages (add a server, a server
 // that needs updating) are one more view in the same slot.
+//
+// The theme is the app's, not a server's: chosen in App settings, kept
+// in settings.json, worn by every shell page whether or not a server is
+// in front, and handed whole to every server page through window.stoop
+// so the web app wears it too, whether or not it has a theme of that
+// name.
 
 const STRIP_HEIGHT = 32;
 const shellPreload = join(__dirname, "../preload/shell.js");
@@ -51,15 +59,12 @@ interface Slot {
   server: Server;
   view: WebContentsView;
   badge: number;
-  color: string;
   // Whether the server's web app is loaded, or the gate page stands in.
   loaded: boolean;
   gated: boolean;
   probedAt: number;
   // Why the gate page stands in, for showing it again on a switch.
   gate?: { kind: string; detail: string };
-  // The web app's own colour tokens, as read off the page.
-  tokens: Partial<Palette>;
   // The server publishes a bridge level above what this app implements.
   newer: boolean;
   version: string;
@@ -80,10 +85,30 @@ export class MainWindow {
   private servers: Server[] = loadServers();
   private state: WindowState = loadWindowState();
   readonly tray: AppTray;
+  // The theme the app wears now, resolved from the preference.
+  private theme: ThemeId;
   private switcher: Switcher;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
+    this.tray = new AppTray({
+      serverItems: () => this.serverMenuItems(),
+      unreadTotal: () => {
+        let total = 0;
+        for (const s of this.slots.values()) total += s.badge;
+        return total;
+      },
+      showWindow: () => this.reveal(),
+      showAddServer: () => {
+        this.reveal();
+        this.showPage("add");
+      },
+      showSettings: () => {
+        this.reveal();
+        this.showPage("settings");
+      },
+    });
+    this.theme = activeTheme(this.tray.settings.theme);
     this.win = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -93,7 +118,7 @@ export class MainWindow {
       show: false,
       titleBarStyle: "hidden",
       trafficLightPosition: { x: 13, y: 10 },
-      backgroundColor: "#141517",
+      backgroundColor: this.palette().canvas,
     });
     this.switcher = new Switcher(
       this.win,
@@ -121,7 +146,9 @@ export class MainWindow {
         this.win.hide();
       }
     });
+    const unfollow = onSystemTheme(() => this.applyTheme());
     this.win.on("closed", () => {
+      unfollow();
       this.switcher.destroy();
       this.tray.destroy();
     });
@@ -138,23 +165,6 @@ export class MainWindow {
     setTimeout(reveal, 1500);
     this.layout();
 
-    this.tray = new AppTray({
-      serverItems: () => this.serverMenuItems(),
-      unreadTotal: () => {
-        let total = 0;
-        for (const s of this.slots.values()) total += s.badge;
-        return total;
-      },
-      showWindow: () => this.reveal(),
-      showAddServer: () => {
-        this.reveal();
-        this.showPage("add");
-      },
-      showSettings: () => {
-        this.reveal();
-        this.showPage("settings");
-      },
-    });
     for (const server of this.servers) this.openSlot(server);
     const front =
       this.servers.find((s) => s.id === this.state.front) ?? this.servers[0];
@@ -197,7 +207,7 @@ export class MainWindow {
         sandbox: true,
       },
     });
-    view.setBackgroundColor("#141517");
+    view.setBackgroundColor(this.palette().canvas);
     this.load(view, page);
     return view;
   }
@@ -223,21 +233,23 @@ export class MainWindow {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        // The preload reads this back so window.stoop.version and the
-        // user agent name the same build.
-        additionalArguments: [`--stoop-desktop-version=${app.getVersion()}`],
+        // The preload reads these back: the version so window.stoop and
+        // the user agent name the same build, the theme so the page's
+        // first paint is already in it.
+        additionalArguments: [
+          `--stoop-desktop-version=${app.getVersion()}`,
+          `--stoop-theme=${encodeURIComponent(JSON.stringify(shellTheme(this.theme)))}`,
+        ],
       },
     });
-    view.setBackgroundColor("#141517");
+    view.setBackgroundColor(this.palette().canvas);
     const slot: Slot = {
       server,
       view,
       badge: 0,
-      color: "#141517",
       loaded: false,
       gated: false,
       probedAt: 0,
-      tokens: {},
       newer: false,
       version: "",
     };
@@ -253,14 +265,12 @@ export class MainWindow {
         void shell.openExternal(next);
       }
     });
-    // theme-color paints the strip and the window behind everything;
-    // the page's own tokens paint the shell's pages. The web app stamps
-    // both together, so one event refreshes both.
-    wc.on("did-change-theme-color", (_event, color) => {
-      if (color) slot.color = color;
-      void this.readTheme(slot);
-    });
-    wc.on("did-finish-load", () => void this.readTheme(slot));
+    // The theme may have moved between the view being made and the page
+    // loading; the page listens from its first script, so saying it
+    // again here lands.
+    wc.on("did-finish-load", () =>
+      wc.send(IPC.stoopTheme, shellTheme(this.theme)),
+    );
     wc.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
       if (!isMainFrame || code === -3) return;
       slot.loaded = false;
@@ -378,34 +388,55 @@ export class MainWindow {
     this.pushChrome();
   }
 
-  // What the shell's own pages paint with: the colours of the server in
-  // front, its own where the page gave them up. A picker window asks for
-  // it as it loads; the page view is told whenever it changes.
+  // What the shell's own pages paint with: the active theme. A picker
+  // window asks for it as it loads; the page view is told whenever it
+  // changes.
   palette(): Palette {
-    const slot = this.front ? this.slots.get(this.front) : undefined;
-    return { ...derivePalette(slot?.color), ...slot?.tokens };
+    return paletteFor(this.theme);
   }
 
-  private async readTheme(slot: Slot) {
-    if (slot.view.webContents.isDestroyed()) return;
-    slot.tokens = await readTokens(slot.view.webContents);
-    if (this.front === slot.server.id) this.pushChrome();
+  // ---- the theme ----
+
+  // A settings change from the page or the tray. The theme is the one
+  // setting that repaints things, so it is checked and applied here.
+  updateSettings(patch: Partial<Settings>) {
+    const next = { ...patch };
+    if ("theme" in next) next.theme = themePreference(next.theme);
+    this.tray.update(next);
+    this.applyTheme();
+  }
+
+  // Resolves the preference again and, when the answer moved, repaints
+  // everything the shell draws and tells every server page.
+  private applyTheme() {
+    const theme = activeTheme(this.tray.settings.theme);
+    if (theme === this.theme) return;
+    this.theme = theme;
+    const canvas = this.palette().canvas;
+    this.chrome.setBackgroundColor(canvas);
+    this.page.setBackgroundColor(canvas);
+    const whole = shellTheme(theme);
+    for (const slot of this.slots.values()) {
+      slot.view.setBackgroundColor(canvas);
+      if (!slot.view.webContents.isDestroyed())
+        slot.view.webContents.send(IPC.stoopTheme, whole);
+    }
+    this.pushChrome();
   }
 
   private pushChrome() {
     const slot = this.front ? this.slots.get(this.front) : undefined;
-    const color = slot?.color ?? "#141517";
+    const palette = this.palette();
     const state: ChromeState = {
       name: slot?.server.name ?? (this.servers.length ? "Stoop" : ""),
       dot: [...this.slots.values()].some((s) => s !== slot && s.badge > 0),
-      color,
-      symbol: symbolFor(color),
+      color: palette.canvas,
+      symbol: palette.text,
       platform: process.platform,
       newer: slot?.newer ?? false,
     };
-    this.win.setBackgroundColor(color);
+    this.win.setBackgroundColor(palette.canvas);
     this.chrome.webContents.send(IPC.chromeState, state);
-    const palette = this.palette();
     this.page.webContents.send(IPC.theme, palette);
     this.switcher.theme(palette);
     this.refreshSwitcher();
@@ -528,7 +559,9 @@ export class MainWindow {
   // What the settings page shows.
   settingsView(): SettingsView {
     return {
-      ...this.tray.settings,
+      keepRunning: this.tray.settings.keepRunning,
+      launchAtLogin: this.tray.settings.launchAtLogin,
+      theme: this.tray.settings.theme,
       version: app.getVersion(),
       platform: process.platform,
       front: this.lastFront()?.name ?? null,
@@ -619,11 +652,4 @@ export function desktopUserAgent(base: string): string {
     .replace(/\s{2,}/g, " ")
     .trim();
   return `${chrome} Stoop-Desktop/${app.getVersion()}`;
-}
-
-// Light text on a dark colour, dark text on a light one.
-function symbolFor(hex: string): string {
-  const n = Number.parseInt(hex.slice(1, 7), 16);
-  const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255];
-  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#1f1d1a" : "#e6e7ea";
 }

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { IPC, type Probe } from "../shared/bridge";
 import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
+import type { Settings } from "./settings";
 import { markQuitting } from "./tray";
 import { MainWindow } from "./window";
 
@@ -55,13 +56,10 @@ app.whenReady().then(() => {
   ipcMain.on(IPC.chooseServer, (_event, id: string) => main?.show(id));
   ipcMain.handle(IPC.getTheme, () => main?.palette());
   ipcMain.handle(IPC.getSettings, () => main?.settingsView());
-  ipcMain.handle(
-    IPC.setSettings,
-    (_event, patch: { keepRunning?: boolean; launchAtLogin?: boolean }) => {
-      main?.tray.update(patch);
-      return main?.settingsView();
-    },
-  );
+  ipcMain.handle(IPC.setSettings, (_event, patch: unknown) => {
+    main?.updateSettings(settingsPatch(patch));
+    return main?.settingsView();
+  });
   ipcMain.on(IPC.showPage, (_event, page: string) => {
     if (page === "back") main?.back();
     else if (page === "add" || page === "settings") main?.showPage(page);
@@ -90,6 +88,18 @@ app.whenReady().then(() => {
     else main?.reveal();
   });
 });
+
+// A patch from the settings page is remote input: only the fields that
+// exist, each as the type it should be. The theme is checked by main.
+function settingsPatch(raw: unknown): Partial<Settings> {
+  const p = (raw ?? {}) as Record<string, unknown>;
+  const out: Partial<Settings> = {};
+  if (typeof p.keepRunning === "boolean") out.keepRunning = p.keepRunning;
+  if (typeof p.launchAtLogin === "boolean") out.launchAtLogin = p.launchAtLogin;
+  if (p.theme && typeof p.theme === "object")
+    out.theme = p.theme as Settings["theme"];
+  return out;
+}
 
 // With the window hidden in the tray the app is still running; only a
 // real close of the last window ends it, and never on macOS.
