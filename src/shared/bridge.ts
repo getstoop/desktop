@@ -68,9 +68,6 @@ export interface ServerRow {
   host: string;
   badge: number;
   state: "ok" | "unreachable" | "too-old" | "not-stoop";
-  // A colour from the server's origin, not from anyone's theme.
-  tile: string;
-  tileText: string;
   current: boolean;
   accelerator: string;
 }

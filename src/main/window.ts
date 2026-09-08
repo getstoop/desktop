@@ -26,7 +26,7 @@ import {
   saveServers,
 } from "./servers";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
-import { Switcher, tileFor } from "./switcher";
+import { Switcher } from "./switcher";
 import { derivePalette, readTokens } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
 
@@ -474,7 +474,6 @@ export class MainWindow {
 
   private serverRows(): ServerRow[] {
     const mac = process.platform === "darwin";
-    const scheme = this.palette().scheme;
     return this.servers.map((server, i) => {
       const slot = this.slots.get(server.id);
       const state = slot?.gated
@@ -486,7 +485,6 @@ export class MainWindow {
         host: hostOf(server.url),
         badge: slot?.badge ?? 0,
         state,
-        ...tileFor(server.url, scheme),
         current: server.id === this.front,
         accelerator: i < 9 ? (mac ? `⌘${i + 1}` : `Ctrl+${i + 1}`) : "",
       };

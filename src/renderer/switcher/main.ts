@@ -56,10 +56,6 @@ function row(server: ServerRow): HTMLButtonElement {
 
   const tile = document.createElement("span");
   tile.className = "switcher-tile";
-  if (server.state === "ok") {
-    tile.style.background = server.tile;
-    tile.style.color = server.tileText;
-  }
   tile.textContent = monogram(server.name);
 
   const text = document.createElement("span");

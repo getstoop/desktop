@@ -111,18 +111,3 @@ export class Switcher {
     return view;
   }
 }
-
-// A colour for a server, from its origin: the hue from a hash of it, the
-// rest from the scheme so it reads in a light theme and a dark one. It is
-// nothing to do with the theme anyone picked — that is per viewer, per
-// view, and would make every tile the same.
-export function tileFor(
-  origin: string,
-  scheme: "dark" | "light",
-): { tile: string; tileText: string } {
-  let hash = 0;
-  for (const ch of origin) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
-  return scheme === "light"
-    ? { tile: `hsl(${hash} 48% 38%)`, tileText: "#ffffff" }
-    : { tile: `hsl(${hash} 52% 68%)`, tileText: `hsl(${hash} 45% 14%)` };
-}
