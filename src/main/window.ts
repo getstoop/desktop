@@ -95,7 +95,12 @@ export class MainWindow {
       trafficLightPosition: { x: 13, y: 10 },
       backgroundColor: "#141517",
     });
-    this.switcher = new Switcher(this.win, STRIP_HEIGHT, () => this.refocus());
+    this.switcher = new Switcher(
+      this.win,
+      STRIP_HEIGHT,
+      (view) => this.load(view, "switcher"),
+      () => this.refocus(),
+    );
     this.chrome = this.shellView("chrome");
     this.page = this.shellView("add");
     this.win.contentView.addChildView(this.chrome);
@@ -105,7 +110,7 @@ export class MainWindow {
       this.remember();
     });
     this.win.on("move", () => this.remember());
-    this.win.on("blur", () => this.switcher.hide());
+    this.win.on("blur", () => this.switcher.hide(false));
     this.win.on("focus", () => this.recheck(false));
     const poll = setInterval(() => this.recheck(true), GATE_POLL_MS);
     this.win.on("closed", () => clearInterval(poll));
@@ -347,6 +352,7 @@ export class MainWindow {
     if (!slot) return;
     if (slot.gated && slot.gate) {
       this.front = id;
+      // The gate page comes up through showPage, which closes the panel.
       this.gate(slot.server, slot.gate.kind, slot.gate.detail);
       this.remember();
       return;
@@ -354,6 +360,9 @@ export class MainWindow {
     for (const s of this.slots.values()) s.view.setVisible(s === slot);
     this.page.setVisible(false);
     this.front = id;
+    // Chosen from the panel, a shortcut, or a menu: the panel is done
+    // either way, and the server takes the keyboard itself.
+    this.switcher.hide(false);
     slot.view.webContents.focus();
     this.pushChrome();
     this.remember();
@@ -363,6 +372,7 @@ export class MainWindow {
     if (page) this.load(this.page, page);
     for (const s of this.slots.values()) s.view.setVisible(false);
     this.page.setVisible(true);
+    this.switcher.hide();
     this.pushChrome();
   }
 
@@ -393,7 +403,9 @@ export class MainWindow {
     };
     this.win.setBackgroundColor(color);
     this.chrome.webContents.send(IPC.chromeState, state);
-    this.page.webContents.send(IPC.theme, this.palette());
+    const palette = this.palette();
+    this.page.webContents.send(IPC.theme, palette);
+    this.switcher.theme(palette);
     this.refreshSwitcher();
   }
 
@@ -451,11 +463,6 @@ export class MainWindow {
     this.switcher.hide();
   }
 
-  chooseServer(id: string) {
-    this.switcher.hide();
-    this.show(id);
-  }
-
   private switcherView(): SwitcherView {
     return {
       rows: this.serverRows(),
@@ -491,9 +498,14 @@ export class MainWindow {
     if (this.switcher.open) this.switcher.update(this.switcherView());
   }
 
-  // Where the keyboard goes when the panel closes. Without this the
-  // composer keeps its caret nowhere and the next keystroke is lost.
+  // Where the keyboard goes when the panel closes: whatever is showing.
+  // Without this the composer keeps its caret nowhere and the next
+  // keystroke is lost.
   private refocus() {
+    if (this.page.getVisible()) {
+      this.page.webContents.focus();
+      return;
+    }
     const slot = this.front ? this.slots.get(this.front) : undefined;
     if (slot && !slot.view.webContents.isDestroyed())
       slot.view.webContents.focus();

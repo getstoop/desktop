@@ -20,18 +20,34 @@ const monogram = (name: string) =>
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("") || "?";
 
+// A repaint keeps the keyboard where it was: on the same server if it is
+// still listed, or on the action button it was on. The first paint, and
+// a server that has gone, land on the one in front.
 function draw(view: SwitcherView) {
+  const focused = document.activeElement;
+  const inPanel = focused instanceof HTMLElement && panel.contains(focused);
+  const wasOn = inPanel ? focused.dataset.id : undefined;
   panel.style.left = `${view.left}px`;
   rows.replaceChildren();
   for (const server of view.rows) rows.append(row(server));
-  focusables()[0]?.focus();
+  if (inPanel && !wasOn) return;
+  const again = wasOn ? rowFor(wasOn) : null;
+  (
+    again ??
+    rows.querySelector<HTMLButtonElement>(".current") ??
+    focusables()[0]
+  )?.focus();
 }
+
+const rowFor = (id: string) =>
+  rows.querySelector<HTMLButtonElement>(`[data-id="${CSS.escape(id)}"]`);
 
 function row(server: ServerRow): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "switcher-row";
   button.setAttribute("role", "menuitem");
+  button.dataset.id = server.id;
   if (server.current) button.classList.add("current");
   if (server.state !== "ok") button.classList.add("gated");
 
@@ -71,7 +87,9 @@ function right(server: ServerRow): HTMLElement {
     warn.title =
       server.state === "too-old"
         ? "This server needs updating"
-        : "Cannot be reached";
+        : server.state === "not-stoop"
+          ? "Not a Stoop server"
+          : "Cannot be reached";
     return warn;
   }
   if (server.badge > 0) {

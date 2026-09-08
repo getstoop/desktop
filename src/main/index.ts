@@ -52,7 +52,7 @@ app.whenReady().then(() => {
   ipcMain.on(IPC.retryServer, (_event, id: string) => main?.retryServer(id));
   ipcMain.on(IPC.openSwitcher, () => main?.toggleSwitcher());
   ipcMain.on(IPC.closeSwitcher, () => main?.closeSwitcher());
-  ipcMain.on(IPC.chooseServer, (_event, id: string) => main?.chooseServer(id));
+  ipcMain.on(IPC.chooseServer, (_event, id: string) => main?.show(id));
   ipcMain.handle(IPC.getTheme, () => main?.palette());
   ipcMain.handle(IPC.getSettings, () => main?.settingsView());
   ipcMain.handle(

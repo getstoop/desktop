@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { type BrowserWindow, WebContentsView } from "electron";
-import { IPC, type SwitcherView } from "../shared/bridge";
+import { IPC, type Palette, type SwitcherView } from "../shared/bridge";
 
 // The panel the strip button opens: one more view in the window, over the
 // server in front, transparent everywhere the panel is not. A view rather
@@ -18,6 +18,9 @@ export class Switcher {
   constructor(
     private win: BrowserWindow,
     private stripHeight: number,
+    // Loads the panel's page into a view, the way every shell page is.
+    private load: (view: WebContentsView) => void,
+    // Where the keyboard goes when the panel closes.
     private onClose: () => void,
   ) {}
 
@@ -33,16 +36,25 @@ export class Switcher {
     panel.webContents.focus();
   }
 
-  hide() {
+  // Closing because the window lost focus hands the keyboard to nobody:
+  // whoever took it has it, and asking for it back would be a fight.
+  hide(refocus = true) {
     if (!this.open) return;
     this.open = false;
     this.view?.setVisible(false);
-    this.onClose();
+    if (refocus) this.onClose();
   }
 
   // A newer list while the panel is up: repaint it in place.
   update(view: SwitcherView) {
     if (this.open) this.draw(view);
+  }
+
+  // The palette follows the server in front, open or not, so the panel
+  // is in the right colours the moment it next appears. Before the page
+  // has loaded it asks for the palette itself.
+  theme(palette: Palette) {
+    if (this.loaded) this.view?.webContents.send(IPC.theme, palette);
   }
 
   // The panel is opened the moment its view is made, before the page is
@@ -68,6 +80,9 @@ export class Switcher {
     this.win.contentView.removeChildView(this.view);
     this.view.webContents.close();
     this.view = null;
+    this.loaded = false;
+    this.pending = null;
+    this.open = false;
   }
 
   private ensure(): WebContentsView {
@@ -84,12 +99,7 @@ export class Switcher {
     view.setBackgroundColor("#00000000");
     view.setVisible(false);
     this.win.contentView.addChildView(view);
-    const dev = process.env.ELECTRON_RENDERER_URL;
-    if (dev) void view.webContents.loadURL(`${dev}/switcher/index.html`);
-    else
-      void view.webContents.loadFile(
-        join(__dirname, "../renderer/switcher/index.html"),
-      );
+    this.load(view);
     view.webContents.once("did-finish-load", () => {
       this.loaded = true;
       if (this.pending) {
