@@ -17,6 +17,7 @@ function paint(palette: Palette) {
   root.style.setProperty("--accent-soft", palette.accentSoft);
   root.style.setProperty("--on-accent", palette.onAccent);
   root.style.setProperty("--danger", palette.danger);
+  root.style.setProperty("--warn", palette.warn);
   root.style.colorScheme = palette.scheme;
 }
 

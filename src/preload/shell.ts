@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld("shell", {
   addServer: (url: string) => ipcRenderer.invoke("shell:add-server", url),
   removeServer: (id: string) => ipcRenderer.send("shell:remove-server", id),
   retryServer: (id: string) => ipcRenderer.send("shell:retry-server", id),
-  openMenu: () => ipcRenderer.send("shell:open-menu"),
+  openSwitcher: () => ipcRenderer.send("shell:open-switcher"),
   updateApp: () => ipcRenderer.send("shell:update-app"),
   getSettings: () => ipcRenderer.invoke("shell:get-settings"),
   setSettings: (patch: unknown) =>
@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld("shell", {
   windowAction: (action: string) =>
     ipcRenderer.send("shell:window-action", action),
   getTheme: () => ipcRenderer.invoke("shell:get-theme"),
+  onSwitcherRows: (handler: (view: unknown) => void) => {
+    ipcRenderer.on("shell:switcher-rows", (_event, view) => handler(view));
+  },
+  chooseServer: (id: string) => ipcRenderer.send("shell:choose-server", id),
+  closeSwitcher: () => ipcRenderer.send("shell:close-switcher"),
   onTheme: (handler: (palette: unknown) => void) => {
     ipcRenderer.on("shell:theme", (_event, palette) => handler(palette));
   },

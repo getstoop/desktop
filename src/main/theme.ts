@@ -50,6 +50,7 @@ const TOKENS: Record<keyof Omit<Palette, "scheme">, string> = {
   accentSoft: "--accent-soft",
   onAccent: "--on-accent",
   danger: "--danger",
+  warn: "--warn",
 };
 
 // A page is remote content, so its answers are colours or nothing.
@@ -107,6 +108,7 @@ export function derivePalette(canvas: string | undefined): Palette {
     accentSoft: "rgba(226, 114, 91, 0.2)",
     onAccent: "#ffffff",
     danger: light ? "#c74a4a" : "#e05c5c",
+    warn: light ? "#b0791a" : "#e0a83c",
     scheme: light ? "light" : "dark",
   };
 }

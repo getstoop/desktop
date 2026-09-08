@@ -12,6 +12,7 @@
   --accent-soft: rgba(226, 114, 91, 0.2);
   --on-accent: #ffffff;
   --danger: #e05c5c;
+  --warn: #e0a83c;
 }
 * {
   box-sizing: border-box;

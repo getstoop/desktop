@@ -1,0 +1,135 @@
+/* The panel sits under the strip button; everything around it is a
+   backdrop that only catches clicks. */
+body.switcher {
+  background: transparent;
+  height: 100vh;
+  overflow: hidden;
+}
+.switcher-backdrop {
+  position: fixed;
+  inset: 0;
+}
+.switcher-panel {
+  position: fixed;
+  top: 4px;
+  width: 300px;
+  max-height: calc(100vh - 16px);
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.switcher-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.switcher-row,
+.switcher-action {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.switcher-row {
+  grid-template-columns: 3px 32px minmax(0, 1fr) auto;
+}
+.switcher-action {
+  grid-template-columns: 16px minmax(0, 1fr);
+  font-size: 13px;
+}
+.switcher-action svg {
+  color: var(--text-muted);
+}
+.switcher-row:hover,
+.switcher-action:hover,
+.switcher-row:focus-visible,
+.switcher-action:focus-visible {
+  background: var(--raised);
+  outline: none;
+}
+.switcher-bar {
+  height: 20px;
+  border-radius: 999px;
+}
+.switcher-row.current .switcher-bar {
+  background: var(--accent);
+}
+.switcher-tile {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.switcher-row.gated .switcher-tile {
+  background: none;
+  border: 1px dashed var(--text-muted);
+  color: var(--text-muted);
+}
+.switcher-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.switcher-name {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switcher-row.gated .switcher-name {
+  color: var(--text-muted);
+}
+.switcher-host {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switcher-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.switcher-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.switcher-warn {
+  display: flex;
+  color: var(--warn);
+}
+.switcher-rule {
+  height: 1px;
+  margin: 6px;
+  background: var(--border);
+}

@@ -25,6 +25,7 @@ export default defineConfig({
           gate: resolve(__dirname, "src/renderer/gate/index.html"),
           settings: resolve(__dirname, "src/renderer/settings/index.html"),
           picker: resolve(__dirname, "src/renderer/picker/index.html"),
+          switcher: resolve(__dirname, "src/renderer/switcher/index.html"),
         },
       },
     },

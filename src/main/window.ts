@@ -8,7 +8,13 @@ import {
   shell,
   WebContentsView,
 } from "electron";
-import type { ChromeState, Palette, SettingsView } from "../shared/bridge";
+import type {
+  ChromeState,
+  Palette,
+  ServerRow,
+  SettingsView,
+  SwitcherView,
+} from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
 import { meetsMinimum, probeServer } from "./probe";
 import { answerScreenShare } from "./screenshare";
@@ -20,6 +26,7 @@ import {
   saveServers,
 } from "./servers";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
+import { Switcher } from "./switcher";
 import { derivePalette, readTokens } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
 
@@ -73,6 +80,7 @@ export class MainWindow {
   private servers: Server[] = loadServers();
   private state: WindowState = loadWindowState();
   readonly tray: AppTray;
+  private switcher: Switcher;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
@@ -87,6 +95,12 @@ export class MainWindow {
       trafficLightPosition: { x: 13, y: 10 },
       backgroundColor: "#141517",
     });
+    this.switcher = new Switcher(
+      this.win,
+      STRIP_HEIGHT,
+      (view) => this.load(view, "switcher"),
+      () => this.refocus(),
+    );
     this.chrome = this.shellView("chrome");
     this.page = this.shellView("add");
     this.win.contentView.addChildView(this.chrome);
@@ -96,6 +110,7 @@ export class MainWindow {
       this.remember();
     });
     this.win.on("move", () => this.remember());
+    this.win.on("blur", () => this.switcher.hide(false));
     this.win.on("focus", () => this.recheck(false));
     const poll = setInterval(() => this.recheck(true), GATE_POLL_MS);
     this.win.on("closed", () => clearInterval(poll));
@@ -106,7 +121,10 @@ export class MainWindow {
         this.win.hide();
       }
     });
-    this.win.on("closed", () => this.tray.destroy());
+    this.win.on("closed", () => {
+      this.switcher.destroy();
+      this.tray.destroy();
+    });
     if (this.state.maximized) this.win.maximize();
     // The window loads no page of its own, so ready-to-show never fires;
     // show once the strip has painted, or after a moment regardless.
@@ -306,6 +324,8 @@ export class MainWindow {
     const q = `?id=${encodeURIComponent(server.id)}&name=${encodeURIComponent(server.name)}&url=${encodeURIComponent(server.url)}&kind=${kind}&detail=${encodeURIComponent(detail)}`;
     this.load(this.page, "gate", q);
     if (this.front === server.id) this.showPage();
+    // A server behind the front one going quiet changes its row too.
+    else this.refreshSwitcher();
   }
 
   // Gated servers are asked again on every poll; loaded ones only when
@@ -324,6 +344,7 @@ export class MainWindow {
     const body = { x: 0, y: STRIP_HEIGHT, width: w, height: h - STRIP_HEIGHT };
     this.page.setBounds(body);
     for (const slot of this.slots.values()) slot.view.setBounds(body);
+    this.switcher.layout();
   }
 
   // ---- what is in front ----
@@ -333,6 +354,7 @@ export class MainWindow {
     if (!slot) return;
     if (slot.gated && slot.gate) {
       this.front = id;
+      // The gate page comes up through showPage, which closes the panel.
       this.gate(slot.server, slot.gate.kind, slot.gate.detail);
       this.remember();
       return;
@@ -340,6 +362,9 @@ export class MainWindow {
     for (const s of this.slots.values()) s.view.setVisible(s === slot);
     this.page.setVisible(false);
     this.front = id;
+    // Chosen from the panel, a shortcut, or a menu: the panel is done
+    // either way, and the server takes the keyboard itself.
+    this.switcher.hide(false);
     slot.view.webContents.focus();
     this.pushChrome();
     this.remember();
@@ -349,6 +374,7 @@ export class MainWindow {
     if (page) this.load(this.page, page);
     for (const s of this.slots.values()) s.view.setVisible(false);
     this.page.setVisible(true);
+    this.switcher.hide();
     this.pushChrome();
   }
 
@@ -379,7 +405,10 @@ export class MainWindow {
     };
     this.win.setBackgroundColor(color);
     this.chrome.webContents.send(IPC.chromeState, state);
-    this.page.webContents.send(IPC.theme, this.palette());
+    const palette = this.palette();
+    this.page.webContents.send(IPC.theme, palette);
+    this.switcher.theme(palette);
+    this.refreshSwitcher();
   }
 
   // ---- servers ----
@@ -423,6 +452,63 @@ export class MainWindow {
   retryServer(id: string) {
     const server = this.servers.find((s) => s.id === id);
     if (server) void this.checkAndLoad(server);
+  }
+
+  // ---- the switcher ----
+
+  toggleSwitcher() {
+    if (this.switcher.open) this.switcher.hide();
+    else this.switcher.show(this.switcherView());
+  }
+
+  closeSwitcher() {
+    this.switcher.hide();
+  }
+
+  private switcherView(): SwitcherView {
+    return {
+      rows: this.serverRows(),
+      // Under the strip button, which sits past the traffic lights on
+      // macOS and at the left edge everywhere else.
+      left: process.platform === "darwin" ? 84 : 12,
+    };
+  }
+
+  private serverRows(): ServerRow[] {
+    const mac = process.platform === "darwin";
+    return this.servers.map((server, i) => {
+      const slot = this.slots.get(server.id);
+      const state = slot?.gated
+        ? ((slot.gate?.kind ?? "unreachable") as ServerRow["state"])
+        : "ok";
+      return {
+        id: server.id,
+        name: server.name,
+        host: hostOf(server.url),
+        badge: slot?.badge ?? 0,
+        state,
+        current: server.id === this.front,
+        accelerator: i < 9 ? (mac ? `⌘${i + 1}` : `Ctrl+${i + 1}`) : "",
+      };
+    });
+  }
+
+  // A list that changed under an open panel: repaint it where it stands.
+  private refreshSwitcher() {
+    if (this.switcher.open) this.switcher.update(this.switcherView());
+  }
+
+  // Where the keyboard goes when the panel closes: whatever is showing.
+  // Without this the composer keeps its caret nowhere and the next
+  // keystroke is lost.
+  private refocus() {
+    if (this.page.getVisible()) {
+      this.page.webContents.focus();
+      return;
+    }
+    const slot = this.front ? this.slots.get(this.front) : undefined;
+    if (slot && !slot.view.webContents.isDestroyed())
+      slot.view.webContents.focus();
   }
 
   // The server to return to from one of the app's own pages: the one
@@ -487,20 +573,6 @@ export class MainWindow {
     });
   }
 
-  popupServerMenu() {
-    const items: MenuItemConstructorOptions[] = [
-      ...this.serverMenuItems(),
-      { type: "separator" },
-      { label: "Add a server…", click: () => this.showPage("add") },
-      { label: "App settings…", click: () => this.showPage("settings") },
-    ];
-    Menu.buildFromTemplate(items).popup({
-      window: this.win,
-      x: 84,
-      y: STRIP_HEIGHT,
-    });
-  }
-
   rebuildAppMenu() {
     const isMac = process.platform === "darwin";
     const template: MenuItemConstructorOptions[] = [
@@ -524,6 +596,15 @@ export class MainWindow {
       { role: "windowMenu" },
     ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
+}
+
+// The address as someone would check it, without the scheme.
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
   }
 }
 

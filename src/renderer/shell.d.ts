@@ -5,6 +5,7 @@ import type {
   PickerSource,
   Probe,
   SettingsView,
+  SwitcherView,
 } from "../shared/bridge";
 
 declare global {
@@ -14,7 +15,7 @@ declare global {
       addServer(url: string): Promise<Probe>;
       removeServer(id: string): void;
       retryServer(id: string): void;
-      openMenu(): void;
+      openSwitcher(): void;
       updateApp(): void;
       getSettings(): Promise<SettingsView>;
       setSettings(patch: {
@@ -29,6 +30,9 @@ declare global {
       openExternal(url: string): void;
       windowAction(action: "minimize" | "maximize" | "close"): void;
       getTheme(): Promise<Palette>;
+      onSwitcherRows(handler: (view: SwitcherView) => void): void;
+      chooseServer(id: string): void;
+      closeSwitcher(): void;
       onTheme(handler: (palette: Palette) => void): void;
       onChromeState(handler: (state: ChromeState) => void): void;
     };
