@@ -48,7 +48,10 @@ function row(server: ServerRow): HTMLButtonElement {
   button.className = "switcher-row";
   button.setAttribute("role", "menuitem");
   button.dataset.id = server.id;
-  if (server.current) button.classList.add("current");
+  if (server.current) {
+    button.classList.add("current");
+    button.setAttribute("aria-current", "true");
+  }
   if (server.state !== "ok") button.classList.add("gated");
 
   const bar = document.createElement("span");

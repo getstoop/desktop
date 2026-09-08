@@ -324,6 +324,8 @@ export class MainWindow {
     const q = `?id=${encodeURIComponent(server.id)}&name=${encodeURIComponent(server.name)}&url=${encodeURIComponent(server.url)}&kind=${kind}&detail=${encodeURIComponent(detail)}`;
     this.load(this.page, "gate", q);
     if (this.front === server.id) this.showPage();
+    // A server behind the front one going quiet changes its row too.
+    else this.refreshSwitcher();
   }
 
   // Gated servers are asked again on every poll; loaded ones only when
