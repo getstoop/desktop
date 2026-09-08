@@ -11,8 +11,16 @@ server repository; the contract is `docs/architecture/desktop.md` there.
 
 ```
 pnpm install
-pnpm dev
+make dev        # electron-vite with --watch; `make lint`, `make build`, `make package` too
 ```
+
+The main process and the preload scripts rebuild and relaunch the app
+when they change; the app's own pages hot-reload from a Vite server on
+:5180. Add `http://localhost:8091` on the first page: the server
+repository's `make dev` serves the live web app there, so changes in
+either repository show up without a rebuild. `make dev` prints the
+branch it runs and warns when `origin/main` has commits this checkout
+lacks.
 
 Type a server address on the first page. Servers are kept in
 `servers.json` under the app's data directory, each in its own session
