@@ -1,11 +1,17 @@
-import { normalizeServerUrl } from "./probe";
+/**
+ * Parses a stoop:// link into one of two shapes, or into null.
+ *
+ * ```
+ * stoop://open?server=<origin>&path=<path>
+ * stoop://auth?server=<origin>&code=<code>
+ * ```
+ *
+ * Imports no Electron. docs/architecture/desktop.md in the server repo.
+ *
+ * @module
+ */
 
-// Parses a stoop:// link into one of two shapes, or into null.
-//
-//   stoop://open?server=<origin>&path=<path>
-//   stoop://auth?server=<origin>&code=<code>
-//
-// Imports no Electron. docs/architecture/desktop.md in the server repo.
+import { normalizeServerUrl } from "./probe";
 
 export const SCHEME = "stoop";
 
