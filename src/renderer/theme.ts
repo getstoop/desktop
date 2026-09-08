@@ -20,7 +20,14 @@ function paint(palette: Palette) {
   root.style.colorScheme = palette.scheme;
 }
 
+// Never throws: this runs at the top of every shell page, and a page
+// that cannot ask for the palette must still wire up its buttons.
 export function followTheme() {
-  void window.shell.getTheme().then(paint);
-  window.shell.onTheme(paint);
+  const shell = window.shell as Partial<Window["shell"]> | undefined;
+  try {
+    void shell?.getTheme?.().then(paint);
+    shell?.onTheme?.(paint);
+  } catch {
+    // shell.css's own palette stands.
+  }
 }
