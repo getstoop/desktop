@@ -60,9 +60,6 @@ body.switcher {
   background: var(--raised);
   outline: none;
 }
-.switcher-row.current {
-  background: var(--accent-soft);
-}
 .switcher-bar {
   height: 20px;
   border-radius: 999px;
