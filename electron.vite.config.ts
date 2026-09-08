@@ -16,6 +16,9 @@ export default defineConfig({
     },
   },
   renderer: {
+    // Pinned, so it never lands on the server repo's Vite port (5173) or
+    // drifts off this one; a collision fails here instead.
+    server: { port: 5180, strictPort: true },
     build: {
       rollupOptions: {
         input: {
