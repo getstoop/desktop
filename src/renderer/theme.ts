@@ -1,23 +1,13 @@
 import type { Palette } from "../shared/bridge";
+import { cssTokens } from "../shared/themes";
 
-// The shell's own pages take their colours from the server in front, so
-// a picker or a settings page sits in the same theme as the app behind
-// it. shell.css holds the default palette for the moment before this
-// arrives, and for when there is no server yet.
+// The shell's own pages wear the app's theme, so a picker or a settings
+// page sits in the same colours as the server behind it. shell.css holds
+// Brownstone for the moment before this arrives.
 function paint(palette: Palette) {
   const root = document.documentElement;
-  root.style.setProperty("--canvas", palette.canvas);
-  root.style.setProperty("--surface", palette.surface);
-  root.style.setProperty("--panel", palette.panel);
-  root.style.setProperty("--raised", palette.raised);
-  root.style.setProperty("--border", palette.border);
-  root.style.setProperty("--text", palette.text);
-  root.style.setProperty("--text-muted", palette.textMuted);
-  root.style.setProperty("--accent", palette.accent);
-  root.style.setProperty("--accent-soft", palette.accentSoft);
-  root.style.setProperty("--on-accent", palette.onAccent);
-  root.style.setProperty("--danger", palette.danger);
-  root.style.setProperty("--warn", palette.warn);
+  for (const [name, value] of Object.entries(cssTokens(palette)))
+    root.style.setProperty(name, value);
   root.style.colorScheme = palette.scheme;
 }
 

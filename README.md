@@ -25,7 +25,13 @@ lacks.
 Type a server address on the first page. Servers are kept in
 `servers.json` under the app's data directory, each in its own session
 partition, and switched from the menu in the title strip or with ⌘1
-to ⌘9. `pnpm package` builds an installer for this machine into
+to ⌘9. The theme is the app's: chosen under App settings → Appearance,
+kept in `settings.json`, worn by every screen the app draws, and handed
+whole (every token) to each server's page through `window.stoop.theme`,
+so the web app wears it too and hides its own picker. `src/shared/themes.ts`
+is the app's copy of the web app's themes; the shape of a theme (its
+tokens, no name) is the contract, so a theme only this side knows still
+renders. `pnpm package` builds an installer for this machine into
 `dist/`; CI builds all three platforms on every push.
 
 ## Layout

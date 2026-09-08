@@ -7,6 +7,7 @@ import type {
   SettingsView,
   SwitcherView,
 } from "../shared/bridge";
+import type { ThemePreference } from "../shared/themes";
 
 declare global {
   interface Window {
@@ -21,6 +22,7 @@ declare global {
       setSettings(patch: {
         keepRunning?: boolean;
         launchAtLogin?: boolean;
+        theme?: ThemePreference;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
       onPickerSources(

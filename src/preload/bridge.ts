@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import {
   BRIDGE,
   IPC,
+  type ShellTheme,
   type ShortcutName,
   type StoopBridge,
 } from "../shared/bridge";
@@ -22,15 +23,40 @@ const stoop: StoopBridge = {
     ipcRenderer.on(IPC.shortcut, listener);
     return () => ipcRenderer.removeListener(IPC.shortcut, listener);
   },
+  theme: themeFromArgs(),
+  onTheme(handler) {
+    const listener = (_: unknown, theme: ShellTheme) => handler(theme);
+    ipcRenderer.on(IPC.stoopTheme, listener);
+    return () => ipcRenderer.removeListener(IPC.stoopTheme, listener);
+  },
 };
 
 contextBridge.exposeInMainWorld("stoop", stoop);
 
-// Main passes the app version as a process argument, the one channel a
-// sandboxed preload can read before any IPC.
+// Main passes the app version and the theme as process arguments, the
+// one channel a sandboxed preload can read before any IPC: the page's
+// first paint needs the theme, and its inline stamp runs before any
+// message could arrive.
 function versionFromArgs(): string {
-  const arg = process.argv.find((a) =>
-    a.startsWith("--stoop-desktop-version="),
-  );
-  return arg ? arg.slice("--stoop-desktop-version=".length) : "dev";
+  return fromArgs("--stoop-desktop-version=") || "dev";
+}
+
+// The theme travels as URI-encoded JSON, so an argument never carries
+// a space or a quote. Main always sends one; the fallback only keeps
+// the shape if it did not.
+function themeFromArgs(): ShellTheme {
+  try {
+    const theme = JSON.parse(
+      decodeURIComponent(fromArgs("--stoop-theme=")),
+    ) as ShellTheme;
+    if (theme && typeof theme === "object" && theme.tokens) return theme;
+  } catch {
+    // Fall through.
+  }
+  return { scheme: "dark", tokens: {} };
+}
+
+function fromArgs(prefix: string): string {
+  const arg = process.argv.find((a) => a.startsWith(prefix));
+  return arg ? arg.slice(prefix.length) : "";
 }

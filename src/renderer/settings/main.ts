@@ -1,4 +1,12 @@
-import type { SettingsView } from "../../shared/bridge";
+import type { Palette, SettingsView } from "../../shared/bridge";
+import {
+  cssTokens,
+  PALETTES,
+  resolveTheme,
+  THEMES,
+  type ThemeId,
+  type ThemePreference,
+} from "../../shared/themes";
 import { followTheme } from "../theme";
 
 followTheme();
@@ -9,6 +17,11 @@ const launchAtLogin = document.getElementById(
 const keepRunning = document.getElementById("keepRunning") as HTMLInputElement;
 const serverList = document.getElementById("serverList") as HTMLDivElement;
 const version = document.getElementById("version") as HTMLSpanElement;
+const themeCards = document.getElementById("themeCards") as HTMLDivElement;
+const followSystem = document.getElementById(
+  "followSystem",
+) as HTMLInputElement;
+const systemHint = document.getElementById("systemHint") as HTMLSpanElement;
 
 // One section at a time, chosen from the column, as the web app's
 // settings frame does.
@@ -25,12 +38,18 @@ for (const link of links) {
   () => window.shell.showPage("back"),
 );
 
+// The theme preference as main last confirmed it; a click sends a
+// changed copy up and paints what comes back.
+let pref: ThemePreference | null = null;
+
 function render(view: SettingsView) {
   const backLabel = document.getElementById("backLabel") as HTMLSpanElement;
   backLabel.textContent = view.front ? `Back to ${view.front}` : "Back";
   launchAtLogin.checked = view.launchAtLogin;
   keepRunning.checked = view.keepRunning;
   version.textContent = view.version;
+  pref = view.theme;
+  renderThemes(view.theme);
   serverList.replaceChildren();
   if (view.servers.length === 0) {
     const p = document.createElement("p");
@@ -73,6 +92,92 @@ function render(view: SettingsView) {
     serverList.append(row);
   }
 }
+
+// ---- appearance ----
+
+// The web app's picker, redrawn here: one card per theme, painted in
+// that theme's own tokens, the active one ringed. In system mode the
+// dark and light halves of the pair show dashed, and a click changes
+// the half the clicked theme belongs to.
+function renderThemes(p: ThemePreference) {
+  const active = resolveTheme(p, systemDark());
+  followSystem.checked = p.mode === "system";
+  systemHint.textContent =
+    p.mode === "system"
+      ? ` — ${nameOf(p.dark)} when dark, ${nameOf(p.light)} when light. Click a card to change either.`
+      : "";
+  themeCards.replaceChildren();
+  for (const t of THEMES) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "theme-card";
+    if (t.id === active) card.classList.add("active");
+    if (p.mode === "system" && (p.dark === t.id || p.light === t.id))
+      card.classList.add("paired");
+    card.setAttribute("aria-pressed", String(t.id === active));
+    wear(card, PALETTES[t.id]);
+    card.innerHTML = MOCK;
+    const name = document.createElement("span");
+    name.className = "theme-card-name";
+    name.textContent = t.name;
+    const kind = document.createElement("span");
+    kind.className = "theme-card-kind";
+    kind.textContent = t.kind;
+    name.append(kind);
+    const blurb = document.createElement("span");
+    blurb.className = "theme-card-blurb";
+    blurb.textContent = t.blurb;
+    card.append(name, blurb);
+    card.addEventListener("click", () => choose(t.id));
+    themeCards.append(card);
+  }
+}
+
+const MOCK = `<span class="theme-mock" aria-hidden="true">
+  <span class="theme-mock-rail"><span class="theme-mock-pill on"></span><span class="theme-mock-pill"></span></span>
+  <span class="theme-mock-side"><span class="theme-mock-line active"></span><span class="theme-mock-line"></span><span class="theme-mock-line"></span></span>
+  <span class="theme-mock-main">
+    <span class="theme-mock-msg"><span class="theme-mock-av"></span><span class="theme-mock-text"><span class="theme-mock-who"></span><span class="theme-mock-body"></span></span></span>
+    <span class="theme-mock-msg"><span class="theme-mock-av"></span><span class="theme-mock-text"><span class="theme-mock-who"></span><span class="theme-mock-body short"></span></span></span>
+    <span class="theme-mock-composer"></span>
+  </span>
+</span>`;
+
+// Sets a theme's tokens on one element, so its subtree wears that theme
+// whatever the page around it wears.
+function wear(el: HTMLElement, palette: Palette) {
+  for (const [name, value] of Object.entries(cssTokens(palette)))
+    el.style.setProperty(name, value);
+}
+
+const nameOf = (id: ThemeId) => THEMES.find((t) => t.id === id)?.name ?? id;
+
+const systemDark = () => matchMedia("(prefers-color-scheme: dark)").matches;
+
+async function setTheme(theme: ThemePreference) {
+  render(await window.shell.setSettings({ theme }));
+}
+
+function choose(id: ThemeId) {
+  if (!pref) return;
+  const kind = THEMES.find((t) => t.id === id)?.kind ?? "dark";
+  void setTheme(
+    pref.mode === "system"
+      ? { ...pref, [kind]: id }
+      : { ...pref, theme: id, [kind]: id },
+  );
+}
+
+followSystem.addEventListener("change", () => {
+  if (!pref) return;
+  void setTheme({ ...pref, mode: followSystem.checked ? "system" : "theme" });
+});
+
+// The OS flipping light and dark moves the ring in system mode; main
+// repaints the page itself.
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (pref) renderThemes(pref);
+});
 
 function hostOf(url: string): string {
   try {
