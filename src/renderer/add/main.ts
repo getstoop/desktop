@@ -7,7 +7,19 @@ const input = document.getElementById("url") as HTMLInputElement;
 const error = document.getElementById("error") as HTMLParagraphElement;
 const detail = document.getElementById("detail") as HTMLParagraphElement;
 const submit = document.getElementById("submit") as HTMLButtonElement;
-input.focus();
+const subtitle = document.getElementById("subtitle") as HTMLParagraphElement;
+
+// A stoop:// link for a server this computer does not know sends the
+// address here rather than adding it: the page says where it came from
+// and leaves the decision where it belongs.
+const invited = new URLSearchParams(location.search).get("url");
+if (invited) {
+  input.value = invited;
+  subtitle.textContent = `A link asks to open ${invited}. Add it to go there: it is the address you would use in a browser, and you sign in the same way.`;
+  submit.focus();
+} else {
+  input.focus();
+}
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();

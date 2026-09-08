@@ -34,6 +34,31 @@ tokens, no name) is the contract, so a theme only this side knows still
 renders. `pnpm package` builds an installer for this machine into
 `dist/`; CI builds all three platforms on every push.
 
+## Deep links
+
+```
+stoop://open?server=https://chat.example.com&path=/join/CODE
+stoop://auth?server=https://chat.example.com&code=CODE
+```
+
+`open` goes to a path on a server: the matching server comes forward and
+its view loads the path; an unknown one fills in the add page and waits
+for a yes. `auth` is the hand-back from signing in with a provider,
+which happens in the system browser because the embedded one is refused
+there; it only ever goes to a server already added, and loads that
+server's completion route in the view that holds the sign-in, so the
+page finds what it left behind. Every path the web app routes is a valid
+target; the shell reads none of them, only checks that the address it
+builds still belongs to the server the link named.
+
+One instance owns the scheme: a second launch hands its link over and
+stops. The scheme is claimed by the installer, so it only works in a
+built app — `pnpm package:dir`, open the app once, then
+`open "stoop://open?server=…&path=/"`. `make dev` claims the scheme for
+the Electron binary running this checkout, which is enough to try the
+routing but is not what a person would have. An AppImage has no install
+step and may not register the scheme at all; the `.deb` does.
+
 ## Layout
 
 ```
@@ -42,6 +67,7 @@ src/main/       the Electron main process
                   the page view for the app's own screens, the server menu
   servers.ts      the persisted server list and each server's partition
   probe.ts        GET /version: is it Stoop, which version, what name
+  deeplink.ts     stoop:// links: what one may say, and where it may go
   screenshare.ts  answers getDisplayMedia
 src/preload/    bridge.ts → window.stoop for server pages
                 shell.ts  → window.shell for the app's own pages
