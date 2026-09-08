@@ -1,4 +1,7 @@
 import type { SettingsView } from "../../shared/bridge";
+import { followTheme } from "../theme";
+
+followTheme();
 
 const launchAtLogin = document.getElementById(
   "launchAtLogin",

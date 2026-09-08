@@ -8,7 +8,7 @@ import {
   shell,
   WebContentsView,
 } from "electron";
-import type { ChromeState, SettingsView } from "../shared/bridge";
+import type { ChromeState, Palette, SettingsView } from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
 import { meetsMinimum, probeServer } from "./probe";
 import { answerScreenShare } from "./screenshare";
@@ -20,6 +20,7 @@ import {
   saveServers,
 } from "./servers";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
+import { derivePalette } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
 
 // One window. The shell draws the title strip (a small view across the
@@ -341,6 +342,14 @@ export class MainWindow {
     this.pushChrome();
   }
 
+  // What the shell's own pages paint with: the colours of the server in
+  // front. A picker window asks for it as it loads; the page view is
+  // told whenever it changes.
+  palette(): Palette {
+    const slot = this.front ? this.slots.get(this.front) : undefined;
+    return derivePalette(slot?.color);
+  }
+
   private pushChrome() {
     const slot = this.front ? this.slots.get(this.front) : undefined;
     const color = slot?.color ?? "#141517";
@@ -354,6 +363,7 @@ export class MainWindow {
     };
     this.win.setBackgroundColor(color);
     this.chrome.webContents.send(IPC.chromeState, state);
+    this.page.webContents.send(IPC.theme, this.palette());
   }
 
   // ---- servers ----

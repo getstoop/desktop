@@ -1,4 +1,7 @@
 import type { PickerSource } from "../../shared/bridge";
+import { followTheme } from "../theme";
+
+followTheme();
 
 const grid = document.getElementById("grid") as HTMLDivElement;
 const share = document.getElementById("share") as HTMLButtonElement;

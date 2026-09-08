@@ -26,6 +26,10 @@ contextBridge.exposeInMainWorld("shell", {
   openExternal: (url: string) => ipcRenderer.send("shell:open-external", url),
   windowAction: (action: string) =>
     ipcRenderer.send("shell:window-action", action),
+  getTheme: () => ipcRenderer.invoke("shell:get-theme"),
+  onTheme: (handler: (palette: unknown) => void) => {
+    ipcRenderer.on("shell:theme", (_event, palette) => handler(palette));
+  },
   onChromeState: (handler: (state: unknown) => void) => {
     ipcRenderer.on("shell:chrome-state", (_event, state) => handler(state));
   },

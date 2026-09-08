@@ -33,7 +33,23 @@ export const IPC = {
   showPage: "shell:show-page",
   pickerSources: "shell:picker-sources",
   pickerChoice: "shell:picker-choice",
+  getTheme: "shell:get-theme",
+  theme: "shell:theme",
 } as const;
+
+// The colours the shell's own pages paint with, derived in main from
+// the front server's theme-color. shell.css carries the same names as
+// literals, so a page renders before this arrives.
+export interface Palette {
+  canvas: string;
+  surface: string;
+  panel: string;
+  raised: string;
+  border: string;
+  text: string;
+  textMuted: string;
+  scheme: "dark" | "light";
+}
 
 // One thing the screen picker can offer.
 export interface PickerSource {

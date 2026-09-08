@@ -1,3 +1,7 @@
+import { followTheme } from "../theme";
+
+followTheme();
+
 const form = document.getElementById("open") as HTMLFormElement;
 const input = document.getElementById("url") as HTMLInputElement;
 const error = document.getElementById("error") as HTMLParagraphElement;
@@ -27,5 +31,3 @@ input.addEventListener("input", () => {
   error.hidden = true;
   detail.hidden = true;
 });
-
-export {};
