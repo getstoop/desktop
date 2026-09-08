@@ -21,22 +21,22 @@ const monogram = (name: string) =>
     .join("") || "?";
 
 // A repaint keeps the keyboard where it was: on the same server if it is
-// still listed, or on the action button it was on. The first paint, and
-// a server that has gone, land on the one in front.
+// still listed, or on the action button it was on. Opening, or a server
+// that has gone, hands the keyboard to the panel itself and lights no
+// row: the bar already says which server is in front, and a lit row is
+// what hover and the arrow keys mean.
 function draw(view: SwitcherView) {
   const focused = document.activeElement;
-  const inPanel = focused instanceof HTMLElement && panel.contains(focused);
+  const inPanel =
+    focused instanceof HTMLElement &&
+    focused !== panel &&
+    panel.contains(focused);
   const wasOn = inPanel ? focused.dataset.id : undefined;
   panel.style.left = `${view.left}px`;
   rows.replaceChildren();
   for (const server of view.rows) rows.append(row(server));
   if (inPanel && !wasOn) return;
-  const again = wasOn ? rowFor(wasOn) : null;
-  (
-    again ??
-    rows.querySelector<HTMLButtonElement>(".current") ??
-    focusables()[0]
-  )?.focus();
+  ((wasOn && rowFor(wasOn)) || panel).focus();
 }
 
 const rowFor = (id: string) =>
@@ -108,13 +108,26 @@ const focusables = () =>
     (b) => b.offsetParent !== null,
   );
 
+// From nowhere, the first arrow lands on the server in front, which is
+// where the list starts for the person reading it.
 function move(step: number) {
   const items = focusables();
   if (items.length === 0) return;
   const at = items.indexOf(document.activeElement as HTMLButtonElement);
-  const next = at === -1 ? 0 : (at + step + items.length) % items.length;
+  const current = items.findIndex((b) => b.classList.contains("current"));
+  const start = current !== -1 ? current : step > 0 ? 0 : items.length - 1;
+  const next = at === -1 ? start : (at + step + items.length) % items.length;
   items[next].focus();
 }
+
+// The panel loses the keyboard whenever it closes, whichever way that
+// was: the server takes it, or the window went behind another. Dropping
+// the row it was on means the next open starts clean rather than
+// relighting it.
+window.addEventListener("blur", () => {
+  if (document.activeElement instanceof HTMLElement)
+    document.activeElement.blur();
+});
 
 backdrop.addEventListener("click", () => window.shell.closeSwitcher());
 add.addEventListener("click", () => window.shell.showPage("add"));

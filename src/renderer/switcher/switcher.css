@@ -53,11 +53,16 @@ body.switcher {
 .switcher-action svg {
   color: var(--text-muted);
 }
+/* A lit row means the pointer is over it or the arrow keys are on it.
+   The server in front is said by its bar alone. */
 .switcher-row:hover,
 .switcher-action:hover,
 .switcher-row:focus-visible,
 .switcher-action:focus-visible {
   background: var(--raised);
+  outline: none;
+}
+.switcher-panel:focus {
   outline: none;
 }
 .switcher-bar {
