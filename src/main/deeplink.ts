@@ -15,14 +15,19 @@ import { normalizeServerUrl } from "./probe";
 
 export const SCHEME = "stoop";
 
+/** A parsed link: an `open` target, or an `auth` hand-back. */
 export type DeepLink =
   | { action: "open"; server: string; path: string }
   | { action: "auth"; server: string; code: string };
 
-// Caps on the whole link and on an auth code.
+/** Caps on the whole link and on an auth code. */
 const MAX_LINK = 2048;
 const MAX_CODE = 512;
 
+/**
+ * @param raw - the link as the operating system delivered it
+ * @returns the link, or null when it is not one this shell acts on
+ */
 export function parseDeepLink(raw: string): DeepLink | null {
   if (!raw || raw.length > MAX_LINK) return null;
   let url: URL;
@@ -51,16 +56,24 @@ export function parseDeepLink(raw: string): DeepLink | null {
   return null;
 }
 
-// A path only: one leading slash, and no "//" or "\", each of which
-// resolves to a different origin.
+/**
+ * A path only: one leading slash, and no "//" or "\", each of which
+ * resolves to a different origin.
+ *
+ * @returns the path, or null when it is not one
+ */
 function safePath(raw: string | null): string | null {
   if (!raw?.startsWith("/")) return null;
   if (raw.startsWith("//") || raw.includes("\\")) return null;
   return raw;
 }
 
-// Resolves a link to an absolute URL on serverUrl, or null when it would
-// resolve anywhere else.
+/**
+ * Resolves a link to an absolute URL on the server it names.
+ *
+ * @param serverUrl - origin of the server the caller resolved
+ * @returns the absolute URL, or null when it would resolve anywhere else
+ */
 export function targetUrl(link: DeepLink, serverUrl: string): string | null {
   // The server the link names must be the one the caller resolved.
   if (link.server !== serverUrl) return null;
@@ -77,8 +90,12 @@ export function targetUrl(link: DeepLink, serverUrl: string): string | null {
   return target.origin === serverUrl ? target.href : null;
 }
 
-// The first argument that parses as a link. Windows and Linux pass one
-// in argv, on a cold start and on later launches.
+/**
+ * The first argument that parses as a link. Windows and Linux pass one in
+ * argv, on a cold start and on later launches.
+ *
+ * @returns the link, or null when no argument is one
+ */
 export function linkFromArgv(argv: string[]): DeepLink | null {
   for (const arg of argv) {
     if (!arg.toLowerCase().startsWith(`${SCHEME}:`)) continue;
