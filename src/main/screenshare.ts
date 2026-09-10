@@ -6,6 +6,7 @@ import {
   ipcMain,
   type Session,
   type Streams,
+  systemPreferences,
 } from "electron";
 import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 
@@ -15,14 +16,32 @@ import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 // platform can capture it.
 //
 // macOS 15 and later has a system picker, and Electron will use it when
-// asked, but it hands back no audio track (electron/electron#44685), so
-// the shell asks for its own picker on every platform.
+// asked, but it hands back no audio track (electron/electron#44685). Our
+// own picker gets one, at the price of a Screen Recording grant that the
+// system picker does not need: desktopCapturer lists nothing without it.
+// So on macOS the grant decides which picker answers, and system audio
+// follows the grant.
 //
 // On a Wayland desktop the portal has already asked the person what to
 // share by the time getSources answers, so its single answer is used
 // as is rather than asking twice.
 
 const shellPreload = join(__dirname, "../preload/shell.js");
+
+// Whether desktopCapturer can see anything. macOS decides this per
+// responsible process, so a dev run is charged to the terminal.
+export function canPickOurselves(): boolean {
+  return (
+    process.platform !== "darwin" ||
+    systemPreferences.getMediaAccessStatus("screen") === "granted"
+  );
+}
+
+// Electron reads null as "the person said no". An empty object instead
+// throws "Video was requested, but no video stream was provided".
+function deny(callback: (streams: Streams) => void) {
+  (callback as (streams: Streams | null) => void)(null);
+}
 
 // parent is the window the picker should sit over.
 export function answerScreenShare(
@@ -33,29 +52,29 @@ export function answerScreenShare(
   session.setDisplayMediaRequestHandler(
     (_request, callback) => {
       void pick(parent(), palette())
-        .then(callback)
-        .catch(() => callback({}));
+        .then((chosen) => (chosen ? callback(chosen) : deny(callback)))
+        .catch(() => deny(callback));
     },
-    { useSystemPicker: false },
+    { useSystemPicker: !canPickOurselves() },
   );
 }
 
 async function pick(
   parent: BrowserWindow | null,
   palette: Palette,
-): Promise<Streams> {
+): Promise<Streams | null> {
   const sources = await desktopCapturer.getSources({
     types: ["screen", "window"],
     thumbnailSize: { width: 320, height: 200 },
     fetchWindowIcons: true,
   });
-  if (sources.length === 0) return {};
+  if (sources.length === 0) return null;
   const wayland = process.platform === "linux" && !!process.env.WAYLAND_DISPLAY;
   if (wayland || sources.length === 1) return streams(sources[0], false);
   const choice = await ask(parent, sources, palette);
-  if (!choice) return {};
+  if (!choice) return null;
   const source = sources.find((s) => s.id === choice.id);
-  return source ? streams(source, choice.audio) : {};
+  return source ? streams(source, choice.audio) : null;
 }
 
 // Where a screen's own audio can be captured alongside it. Not Linux:
