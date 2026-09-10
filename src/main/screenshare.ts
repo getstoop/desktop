@@ -28,13 +28,15 @@ import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 
 const shellPreload = join(__dirname, "../preload/shell.js");
 
-// Whether desktopCapturer can see anything. macOS decides this per
-// responsible process, so a dev run is charged to the terminal.
+// Whether desktopCapturer can see anything. Asking is what raises the
+// macOS prompt, so an undecided Mac still goes to our picker: that first
+// share fails, the person grants, and the next one works. Only a refusal
+// sends us back to the system picker. macOS decides this per responsible
+// process, so a dev run is charged to the terminal.
 export function canPickOurselves(): boolean {
-  return (
-    process.platform !== "darwin" ||
-    systemPreferences.getMediaAccessStatus("screen") === "granted"
-  );
+  if (process.platform !== "darwin") return true;
+  const status = systemPreferences.getMediaAccessStatus("screen");
+  return status !== "denied" && status !== "restricted";
 }
 
 // Electron reads null as "the person said no". An empty object instead
