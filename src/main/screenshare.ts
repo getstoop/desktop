@@ -10,10 +10,13 @@ import {
 import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 
 // getDisplayMedia in a page fails until the main process answers it;
-// there is no built-in picker. macOS 15 and later has a system picker,
-// which Electron uses when asked. Everywhere else the shell opens a
-// picker window of its own: screens and windows with thumbnails, and
-// system audio where the platform can capture it (Windows).
+// there is no built-in picker, so the shell opens one of its own:
+// screens and windows with thumbnails, and system audio where the
+// platform can capture it.
+//
+// macOS 15 and later has a system picker, and Electron will use it when
+// asked, but it hands back no audio track (electron/electron#44685), so
+// the shell asks for its own picker on every platform.
 //
 // On a Wayland desktop the portal has already asked the person what to
 // share by the time getSources answers, so its single answer is used
@@ -33,7 +36,7 @@ export function answerScreenShare(
         .then(callback)
         .catch(() => callback({}));
     },
-    { useSystemPicker: true },
+    { useSystemPicker: false },
   );
 }
 
@@ -55,12 +58,14 @@ async function pick(
   return source ? streams(source, choice.audio) : {};
 }
 
+// Where a screen's own audio can be captured alongside it. Not Linux:
+// Electron cannot leave our own output out of the capture there, so a
+// share inside a call would re-publish the call.
+const systemAudio =
+  process.platform === "win32" || process.platform === "darwin";
+
 function streams(video: DesktopCapturerSource, audio: boolean): Streams {
-  return {
-    video,
-    // System audio with a screen is only capturable on Windows.
-    audio: audio && process.platform === "win32" ? "loopback" : undefined,
-  };
+  return { video, audio: audio && systemAudio ? "loopback" : undefined };
 }
 
 interface Choice {
@@ -118,7 +123,7 @@ function ask(
       }));
       win.webContents.send(IPC.pickerSources, {
         sources: list,
-        audio: process.platform === "win32",
+        audio: systemAudio,
       });
       win.show();
     });
