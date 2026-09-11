@@ -17,6 +17,12 @@ protocols:
     schemes: [stoop]
 mac:
   category: public.app-category.social-networking
+  # What macOS shows when a screen share first asks for system audio;
+  # without it electron-builder fills in a generic line.
+  extendInfo:
+    NSAudioCaptureUsageDescription: >-
+      Stoop records your computer's audio so a screen share can carry
+      the sound you are hearing.
   target:
     - target: dmg
       arch: [universal]

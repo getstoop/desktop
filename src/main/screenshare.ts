@@ -6,20 +6,44 @@ import {
   ipcMain,
   type Session,
   type Streams,
+  systemPreferences,
 } from "electron";
 import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 
 // getDisplayMedia in a page fails until the main process answers it;
-// there is no built-in picker. macOS 15 and later has a system picker,
-// which Electron uses when asked. Everywhere else the shell opens a
-// picker window of its own: screens and windows with thumbnails, and
-// system audio where the platform can capture it (Windows).
+// there is no built-in picker, so the shell opens one of its own:
+// screens and windows with thumbnails, and system audio where the
+// platform can capture it.
+//
+// macOS 15 and later has a system picker, and Electron will use it when
+// asked, but it hands back no audio track (electron/electron#44685). Our
+// own picker gets one, at the price of a Screen Recording grant that the
+// system picker does not need: desktopCapturer lists nothing without it.
+// So on macOS the grant decides which picker answers, and system audio
+// follows the grant.
 //
 // On a Wayland desktop the portal has already asked the person what to
 // share by the time getSources answers, so its single answer is used
 // as is rather than asking twice.
 
 const shellPreload = join(__dirname, "../preload/shell.js");
+
+// Whether desktopCapturer can see anything. Asking is what raises the
+// macOS prompt, so an undecided Mac still goes to our picker: that first
+// share fails, the person grants, and the next one works. Only a refusal
+// sends us back to the system picker. macOS decides this per responsible
+// process, so a dev run is charged to the terminal.
+export function canPickOurselves(): boolean {
+  if (process.platform !== "darwin") return true;
+  const status = systemPreferences.getMediaAccessStatus("screen");
+  return status !== "denied" && status !== "restricted";
+}
+
+// Electron reads null as "the person said no". An empty object instead
+// throws "Video was requested, but no video stream was provided".
+function deny(callback: (streams: Streams) => void) {
+  (callback as (streams: Streams | null) => void)(null);
+}
 
 // parent is the window the picker should sit over.
 export function answerScreenShare(
@@ -30,37 +54,39 @@ export function answerScreenShare(
   session.setDisplayMediaRequestHandler(
     (_request, callback) => {
       void pick(parent(), palette())
-        .then(callback)
-        .catch(() => callback({}));
+        .then((chosen) => (chosen ? callback(chosen) : deny(callback)))
+        .catch(() => deny(callback));
     },
-    { useSystemPicker: true },
+    { useSystemPicker: !canPickOurselves() },
   );
 }
 
 async function pick(
   parent: BrowserWindow | null,
   palette: Palette,
-): Promise<Streams> {
+): Promise<Streams | null> {
   const sources = await desktopCapturer.getSources({
     types: ["screen", "window"],
     thumbnailSize: { width: 320, height: 200 },
     fetchWindowIcons: true,
   });
-  if (sources.length === 0) return {};
+  if (sources.length === 0) return null;
   const wayland = process.platform === "linux" && !!process.env.WAYLAND_DISPLAY;
   if (wayland || sources.length === 1) return streams(sources[0], false);
   const choice = await ask(parent, sources, palette);
-  if (!choice) return {};
+  if (!choice) return null;
   const source = sources.find((s) => s.id === choice.id);
-  return source ? streams(source, choice.audio) : {};
+  return source ? streams(source, choice.audio) : null;
 }
 
+// Where a screen's own audio can be captured alongside it. Not Linux:
+// Electron cannot leave our own output out of the capture there, so a
+// share inside a call would re-publish the call.
+const systemAudio =
+  process.platform === "win32" || process.platform === "darwin";
+
 function streams(video: DesktopCapturerSource, audio: boolean): Streams {
-  return {
-    video,
-    // System audio with a screen is only capturable on Windows.
-    audio: audio && process.platform === "win32" ? "loopback" : undefined,
-  };
+  return { video, audio: audio && systemAudio ? "loopback" : undefined };
 }
 
 interface Choice {
@@ -118,7 +144,7 @@ function ask(
       }));
       win.webContents.send(IPC.pickerSources, {
         sources: list,
-        audio: process.platform === "win32",
+        audio: systemAudio,
       });
       win.show();
     });
