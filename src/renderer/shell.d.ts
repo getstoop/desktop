@@ -3,6 +3,7 @@ import type {
   ChromeState,
   Palette,
   PickerSource,
+  PresenceChoice,
   Probe,
   SettingsView,
   SwitcherView,
@@ -23,8 +24,11 @@ declare global {
         keepRunning?: boolean;
         launchAtLogin?: boolean;
         theme?: ThemePreference;
+        status?: PresenceChoice;
+        notifications?: boolean;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
+      testNotification(): void;
       onPickerSources(
         handler: (payload: { sources: PickerSource[]; audio: boolean }) => void,
       ): void;

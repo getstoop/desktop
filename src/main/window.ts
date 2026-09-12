@@ -4,6 +4,7 @@ import {
   BrowserWindow,
   Menu,
   type MenuItemConstructorOptions,
+  Notification,
   session,
   shell,
   WebContentsView,
@@ -27,8 +28,9 @@ import {
   type Server,
   saveServers,
 } from "./servers";
-import type { Settings } from "./settings";
+import { presenceChoice, type Settings } from "./settings";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
+import { StatusWatch } from "./status";
 import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
@@ -94,6 +96,7 @@ export class MainWindow {
   // The theme the app wears now, resolved from the preference.
   private theme: ThemeId;
   private switcher: Switcher;
+  private status: StatusWatch;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
@@ -117,6 +120,9 @@ export class MainWindow {
       },
     });
     this.theme = activeTheme(this.tray.settings.theme);
+    this.status = new StatusWatch(this.tray.settings.status, (status) =>
+      this.tellServers(IPC.stoopStatus, status),
+    );
     this.win = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -157,6 +163,7 @@ export class MainWindow {
     const unfollow = onSystemTheme(() => this.applyTheme());
     this.win.on("closed", () => {
       unfollow();
+      this.status.stop();
       this.switcher.destroy();
       this.tray.destroy();
     });
@@ -251,6 +258,8 @@ export class MainWindow {
         additionalArguments: [
           `--stoop-desktop-version=${app.getVersion()}`,
           `--stoop-theme=${encodeURIComponent(JSON.stringify(shellTheme(this.theme)))}`,
+          `--stoop-status=${this.status.effective()}`,
+          `--stoop-notifications=${this.tray.settings.notifications}`,
         ],
       },
     });
@@ -280,9 +289,10 @@ export class MainWindow {
     // The theme may have moved between the view being made and the page
     // loading; the page listens from its first script, so saying it
     // again here lands.
-    wc.on("did-finish-load", () =>
-      wc.send(IPC.stoopTheme, shellTheme(this.theme)),
-    );
+    wc.on("did-finish-load", () => {
+      wc.send(IPC.stoopTheme, shellTheme(this.theme));
+      wc.send(IPC.stoopStatus, this.status.effective());
+    });
     wc.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
       if (!isMainFrame || code === -3) return;
       slot.loaded = false;
@@ -422,8 +432,37 @@ export class MainWindow {
   updateSettings(patch: Partial<Settings>) {
     const next = { ...patch };
     if ("theme" in next) next.theme = themePreference(next.theme);
+    if ("status" in next) next.status = presenceChoice(next.status);
     this.tray.update(next);
     this.applyTheme();
+    // The watch decides what the servers are told; setting the choice
+    // announces it when the answer moved.
+    if (next.status) this.status.set(next.status);
+    if ("notifications" in next)
+      this.tellServers(
+        IPC.stoopNotifications,
+        this.tray.settings.notifications,
+      );
+  }
+
+  // One message to every server page that has one to receive it. The
+  // shell's own pages are told through pushChrome and the settings view.
+  private tellServers(channel: string, value: unknown) {
+    for (const slot of this.slots.values()) {
+      if (!slot.view.webContents.isDestroyed())
+        slot.view.webContents.send(channel, value);
+    }
+  }
+
+  // Fired from main rather than from a page, so what it proves is the
+  // app's own plumbing to the OS — which is the part that was in doubt.
+  // A page's test notification only ever proved that page's.
+  testNotification() {
+    if (!Notification.isSupported()) return;
+    new Notification({
+      title: "Stoop notifications are working",
+      body: "This is what a mention looks like.",
+    }).show();
   }
 
   // Resolves the preference again and, when the answer moved, repaints
@@ -626,6 +665,8 @@ export class MainWindow {
       keepRunning: this.tray.settings.keepRunning,
       launchAtLogin: this.tray.settings.launchAtLogin,
       theme: this.tray.settings.theme,
+      status: this.tray.settings.status,
+      notifications: this.tray.settings.notifications,
       version: app.getVersion(),
       platform: process.platform,
       front: this.lastFront()?.name ?? null,

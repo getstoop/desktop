@@ -4,9 +4,13 @@
 
 import type { ThemePreference } from "./themes";
 
-export const BRIDGE = 2;
+export const BRIDGE = 3;
 
 export type ShortcutName = "pushToTalk";
+
+// Bridge 3. How this side names a status. Strings rather than the
+// realtime enum: the shell has no protos, and the page maps them.
+export type PresenceChoice = "online" | "away" | "dnd";
 
 export interface StoopBridge {
   bridge: number;
@@ -18,6 +22,17 @@ export interface StoopBridge {
   // the tokens and hides its own picker.
   theme: ShellTheme;
   onTheme(handler: (theme: ShellTheme) => void): () => void;
+  // Bridge 3. The status the app keeps for every server it holds: one
+  // choice, and Away decided from the computer rather than from whichever
+  // page happens to be in front. A page that is behind sees no input at
+  // all, so it cannot tell "gone" from "reading something else".
+  status: PresenceChoice;
+  onStatus(handler: (status: PresenceChoice) => void): () => void;
+  // Bridge 3. Whether App settings is letting desktop banners through,
+  // asked at the moment one would fire. A function because contextBridge
+  // copies values across once, at load, and this one changes while the
+  // page is open.
+  notificationsAllowed(): boolean;
 }
 
 // The shape of a theme, as it crosses the bridge: no name, only what
@@ -35,6 +50,8 @@ export const IPC = {
   setBadge: "stoop:set-badge",
   shortcut: "stoop:shortcut",
   stoopTheme: "stoop:theme",
+  stoopStatus: "stoop:status",
+  stoopNotifications: "stoop:notifications",
   probe: "shell:probe",
   addServer: "shell:add-server",
   removeServer: "shell:remove-server",
@@ -54,6 +71,7 @@ export const IPC = {
   switcherRows: "shell:switcher-rows",
   chooseServer: "shell:choose-server",
   closeSwitcher: "shell:close-switcher",
+  testNotification: "shell:test-notification",
 } as const;
 
 // One theme's tokens, the active row of shared/themes.ts: what the
@@ -114,6 +132,10 @@ export interface SettingsView {
   keepRunning: boolean;
   launchAtLogin: boolean;
   theme: ThemePreference;
+  // The status as chosen, not as reported: the settings page shows what
+  // the person picked, while idleness may be reporting Away on top of it.
+  status: PresenceChoice;
+  notifications: boolean;
   version: string;
   platform: string;
   // The server to go back to, by name, when there is one.
