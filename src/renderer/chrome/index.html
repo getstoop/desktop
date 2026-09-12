@@ -15,6 +15,9 @@
         align-items: center;
         gap: 12px;
         padding-left: 84px;
+        /* The gear sits 12px in from the edge; the window buttons, when
+           there are any, run past it to the edge itself. */
+        padding-right: 12px;
         background: #141517;
         color: #e6e7ea;
         font: 12px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -22,6 +25,7 @@
         user-select: none;
       }
       body.no-lights { padding-left: 12px; }
+      #controls { margin-right: -12px; }
       #server {
         position: relative;
         display: inline-flex;
@@ -49,9 +53,18 @@
         background: #e2725b;
       }
       #dot[hidden] { display: none; }
-      #update {
+      /* Everything that belongs at the other end of the strip. One auto
+         margin, on the group: two of them would share the free space
+         between them and strand the update pill in the middle. */
+      #right {
         margin-left: auto;
-        margin-right: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 100%;
+        -webkit-app-region: no-drag;
+      }
+      #update {
         padding: 3px 10px;
         border: 1px solid currentColor;
         border-radius: 999px;
@@ -63,6 +76,25 @@
       }
       #update:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
       #update[hidden] { display: none; }
+      #gear {
+        width: 28px;
+        height: 100%;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        border: none;
+        border-radius: 4px;
+        background: none;
+        color: inherit;
+        font: inherit;
+        opacity: 0.75;
+      }
+      #gear:hover { opacity: 1; background: rgba(127, 127, 127, 0.25); }
+      #gear[aria-pressed="true"] {
+        opacity: 1;
+        background: rgba(127, 127, 127, 0.25);
+      }
+      #gear:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
       #controls {
         display: flex;
         height: 100%;
@@ -87,7 +119,12 @@
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
       <span id="dot" hidden></span>
     </button>
-    <button id="update" type="button" hidden title="This server is newer than this app. Update the app to use everything it offers.">Update the app</button>
+    <div id="right">
+      <button id="update" type="button" hidden title="This server is newer than this app. Update the app to use everything it offers.">Update the app</button>
+      <button id="gear" type="button" aria-pressed="false" aria-label="App settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.48.66.85 1.19.94H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
     <div id="controls" hidden>
       <button type="button" data-action="minimize" title="Minimize">&#x2013;</button>
       <button type="button" data-action="maximize" title="Maximize">&#x25A1;</button>

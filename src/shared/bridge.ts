@@ -132,6 +132,9 @@ export interface ChromeState {
   platform: "darwin" | "win32" | "linux" | string;
   // The front server speaks a newer bridge than this app: offer an update.
   newer: boolean;
+  // App settings is the page in front, so the strip's gear is lit and
+  // clicking it goes back rather than opening what is already open.
+  settings: boolean;
 }
 
 // The answer to "is this a Stoop server I can open?".
