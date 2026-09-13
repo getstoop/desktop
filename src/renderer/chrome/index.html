@@ -84,14 +84,21 @@
       #gear {
         width: 24px;
         height: 24px;
-        display: grid;
-        place-items: center;
+        /* Flex, and padding zeroed: a button carries 1px 6px of its own
+           by default, which with border-box shrinks the box the icon is
+           centred in and pushes it off. Chromium's anonymous button box
+           does not lay out as a grid reliably either. */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
         flex: 0 0 auto;
         border: none;
         border-radius: 6px;
         background: none;
         color: inherit;
         font: inherit;
+        line-height: 0;
         opacity: 0.75;
       }
       /* Hover only while the strip still has the pointer. Losing the
