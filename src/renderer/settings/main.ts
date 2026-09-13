@@ -29,8 +29,10 @@ const systemHint = document.getElementById("systemHint") as HTMLSpanElement;
 const statusOptions = document.getElementById(
   "statusOptions",
 ) as HTMLDivElement;
-const notifications = document.getElementById(
-  "notifications",
+// Not "notifications": the section around it already owns that id, and
+// getElementById would hand back the section, whose .checked is nothing.
+const desktopNotifications = document.getElementById(
+  "desktopNotifications",
 ) as HTMLInputElement;
 
 // One section at a time, chosen from the column, as the web app's
@@ -57,7 +59,7 @@ function render(view: SettingsView) {
   backLabel.textContent = view.front ? `Back to ${view.front}` : "Back";
   launchAtLogin.checked = view.launchAtLogin;
   keepRunning.checked = view.keepRunning;
-  notifications.checked = view.notifications;
+  desktopNotifications.checked = view.notifications;
   renderStatus(view.status);
   version.textContent = view.version;
   pref = view.theme;
@@ -139,9 +141,11 @@ function renderStatus(status: PresenceChoice) {
   }
 }
 
-notifications.addEventListener("change", async () => {
+desktopNotifications.addEventListener("change", async () => {
   render(
-    await window.shell.setSettings({ notifications: notifications.checked }),
+    await window.shell.setSettings({
+      notifications: desktopNotifications.checked,
+    }),
   );
 });
 (
