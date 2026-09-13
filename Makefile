@@ -22,6 +22,7 @@ dev-git-check:
 lint:
 	pnpm lint
 	pnpm typecheck
+	pnpm check:ids
 
 build:
 	pnpm build
