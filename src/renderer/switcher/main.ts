@@ -7,7 +7,6 @@ const panel = document.getElementById("panel") as HTMLDivElement;
 const rows = document.getElementById("rows") as HTMLDivElement;
 const backdrop = document.getElementById("backdrop") as HTMLDivElement;
 const add = document.getElementById("add") as HTMLButtonElement;
-const settings = document.getElementById("settings") as HTMLButtonElement;
 
 const WARN =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>';
@@ -131,7 +130,6 @@ window.addEventListener("blur", () => {
 
 backdrop.addEventListener("click", () => window.shell.closeSwitcher());
 add.addEventListener("click", () => window.shell.showPage("add"));
-settings.addEventListener("click", () => window.shell.showPage("settings"));
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") window.shell.closeSwitcher();
   else if (event.key === "ArrowDown") {

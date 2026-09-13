@@ -85,6 +85,9 @@ export class MainWindow {
   private page: WebContentsView;
   private slots = new Map<string, Slot>();
   private front: string | null = null; // server id, or null for the page view
+  // What the page view last loaded, and whether it is the one showing:
+  // the strip's gear lights for App settings and nothing else.
+  private pageName: string | null = null;
   private servers: Server[] = loadServers();
   private state: WindowState = loadWindowState();
   readonly tray: AppTray;
@@ -218,6 +221,10 @@ export class MainWindow {
   }
 
   private load(view: WebContentsView, page: string, query = "") {
+    // Everything the page view is ever given comes through here — the
+    // gate page and the filled-in add page go straight to load — so this
+    // is the one place that can know what it holds.
+    if (view === this.page) this.pageName = page;
     const dev = rendererUrl(page, query);
     if (dev) void view.webContents.loadURL(dev);
     else void view.webContents.loadFile(rendererFile(page), { search: query });
@@ -382,6 +389,7 @@ export class MainWindow {
     for (const s of this.slots.values()) s.view.setVisible(s === slot);
     this.page.setVisible(false);
     this.front = id;
+    this.pageName = null;
     // Chosen from the panel, a shortcut, or a menu: the panel is done
     // either way, and the server takes the keyboard itself.
     this.switcher.hide(false);
@@ -446,6 +454,7 @@ export class MainWindow {
       symbol: palette.text,
       platform: process.platform,
       newer: slot?.newer ?? false,
+      settings: this.pageName === "settings",
     };
     this.win.setBackgroundColor(palette.canvas);
     this.chrome.webContents.send(IPC.chromeState, state);
