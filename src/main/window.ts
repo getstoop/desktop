@@ -415,6 +415,12 @@ export class MainWindow {
     for (const s of this.slots.values()) s.view.setVisible(false);
     this.page.setVisible(true);
     this.switcher.hide();
+    // The page takes the keyboard, as a server does when it comes
+    // forward. Without this the strip keeps it, and whatever was clicked
+    // to get here — the gear — stays lit as though still being pressed.
+    // Closing the switcher refocuses too, so this is only doing the work
+    // when the panel was never open.
+    this.refocus();
     this.pushChrome();
   }
 
@@ -491,6 +497,7 @@ export class MainWindow {
       dot: [...this.slots.values()].some((s) => s !== slot && s.badge > 0),
       color: palette.canvas,
       symbol: palette.text,
+      accent: palette.accent,
       platform: process.platform,
       newer: slot?.newer ?? false,
       settings: this.pageName === "settings",

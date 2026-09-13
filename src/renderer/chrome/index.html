@@ -89,10 +89,22 @@
         font: inherit;
         opacity: 0.75;
       }
-      #gear:hover { opacity: 1; background: rgba(127, 127, 127, 0.25); }
-      #gear[aria-pressed="true"] {
+      /* Hover only while the strip still has the pointer. Losing the
+         window can leave :hover on whatever it was last over, and a lit
+         gear means "App settings is in front", not "the mouse passed
+         through here ten minutes ago". */
+      body:not(.pointer-gone) #gear:hover {
         opacity: 1;
         background: rgba(127, 127, 127, 0.25);
+      }
+      /* Open, not hovered. The two have to look like different kinds of
+         thing: hover is a grey wash that follows the pointer, this is the
+         accent, and it stays put because App settings is what is in
+         front. Same grey for both read as a hover that had got stuck. */
+      #gear[aria-pressed="true"] {
+        opacity: 1;
+        color: var(--accent, currentColor);
+        background: color-mix(in srgb, var(--accent, #888) 22%, transparent);
       }
       #gear:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
       #controls {

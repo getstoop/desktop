@@ -24,9 +24,24 @@ for (const button of controls.querySelectorAll<HTMLButtonElement>("button")) {
   });
 }
 
+// The strip hands the keyboard to the page or the server it opened, so
+// the button that was clicked should not keep looking pressed. The
+// switcher panel drops its focus the same way when it loses the window.
+window.addEventListener("blur", () => {
+  document.body.classList.add("pointer-gone");
+  if (document.activeElement instanceof HTMLElement)
+    document.activeElement.blur();
+});
+document.addEventListener(
+  "pointermove",
+  () => document.body.classList.remove("pointer-gone"),
+  { passive: true },
+);
+
 window.shell.onChromeState((state) => {
   document.body.style.background = state.color;
   document.body.style.color = state.symbol;
+  document.body.style.setProperty("--accent", state.accent);
   server.hidden = !state.name;
   name.textContent = state.name;
   dot.hidden = !state.dot;

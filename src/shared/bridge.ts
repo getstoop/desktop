@@ -148,9 +148,12 @@ export interface ChromeState {
   name: string;
   // Another server has unread activity.
   dot: boolean;
-  // The theme's canvas, and text that reads on it.
+  // The theme's canvas, text that reads on it, and the accent a state is
+  // painted in — the strip has to tell "App settings is open" apart from
+  // "the pointer is here", and grey cannot do both.
   color: string;
   symbol: string;
+  accent: string;
   platform: "darwin" | "win32" | "linux" | string;
   // The front server speaks a newer bridge than this app: offer an update.
   newer: boolean;
