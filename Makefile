@@ -1,4 +1,4 @@
-.PHONY: dev dev-git-check lint build package clean
+.PHONY: dev dev-git-check lint build package package-dir sign-adhoc clean
 
 ## dev: the shell with hot reload — the main process and the preload scripts
 ## rebuild and relaunch the app on change; its own pages hot-reload from a
@@ -29,6 +29,34 @@ build:
 ## package: an unsigned installer for this machine, into dist/
 package:
 	pnpm package
+
+## package-dir: the unpacked app in dist/, for trying a branch on this
+## machine without building an installer.
+package-dir:
+	pnpm package:dir
+	@$(MAKE) --no-print-directory sign-adhoc
+
+## sign-adhoc: bind a macOS bundle to its own identifier, ad-hoc. Hung off
+## package-dir only: an installer built by `package` carries its own copy
+## of the app, so signing the one left in dist/ afterwards would change
+## nothing about what ships and only look as though it had.
+## electron-builder skips signing when it finds no Developer ID, which
+## leaves Electron's own linker signature: the bundle then reports
+## `Identifier=Electron` with its Info.plist unbound, and Notification
+## Center — which attributes a banner by that identifier — has nothing to
+## attribute ours to and drops every one in silence. Ad-hoc signing is
+## enough to get them delivered on this machine. It is NOT a substitute
+## for signing a release (Desktop 11, 12), and it has to run again after
+## every package because the build replaces the bundle.
+sign-adhoc:
+	@test "$$(uname -s)" = Darwin || exit 0; \
+	app=$$(ls -d dist/mac*/Stoop.app 2>/dev/null | head -1); \
+	if [ -z "$$app" ]; then echo "make sign-adhoc: no Stoop.app in dist/, nothing to sign"; exit 0; fi; \
+	if codesign -dv "$$app" 2>&1 | grep -q "Authority="; then \
+	  echo "make sign-adhoc: $$app is properly signed; leaving it alone"; exit 0; \
+	fi; \
+	echo "make sign-adhoc: ad-hoc signing $$app so macOS will deliver its notifications"; \
+	codesign --force --deep --sign - --identifier com.getstoop.desktop "$$app"
 
 clean:
 	rm -rf out dist
