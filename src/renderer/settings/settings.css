@@ -169,6 +169,38 @@
 /* The web app's theme picker (web/src/styles/theme-picker.css), with the
    same miniature. Each card wears its own theme: main.ts sets the
    tokens on the card, so every var() below resolves to that theme. */
+.theme-in-use {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.theme-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  border: none;
+}
+
+.theme-filters legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.theme-filters .chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .theme-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -215,6 +247,12 @@
   padding: 0 12px;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* Under an Accessible card: what the tag is for. */
+.theme-card-why {
+  padding: 0 12px;
+  font-size: 12px;
 }
 .theme-mock {
   display: grid;

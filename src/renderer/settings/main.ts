@@ -1,9 +1,12 @@
 import type { Palette, SettingsView } from "../../shared/bridge";
 import {
   cssTokens,
+  matchesFilter,
   PALETTES,
   resolveTheme,
+  THEME_FILTERS,
   THEMES,
+  type ThemeFilter,
   type ThemeId,
   type ThemePreference,
 } from "../../shared/themes";
@@ -17,6 +20,12 @@ const launchAtLogin = document.getElementById(
 const keepRunning = document.getElementById("keepRunning") as HTMLInputElement;
 const serverList = document.getElementById("serverList") as HTMLDivElement;
 const version = document.getElementById("version") as HTMLSpanElement;
+const themeInUse = document.getElementById(
+  "themeInUse",
+) as HTMLParagraphElement;
+const themeFilters = document.getElementById(
+  "themeFilters",
+) as HTMLFieldSetElement;
 const themeCards = document.getElementById("themeCards") as HTMLDivElement;
 const followSystem = document.getElementById(
   "followSystem",
@@ -99,15 +108,39 @@ function render(view: SettingsView) {
 // that theme's own tokens, the active one ringed. In system mode the
 // dark and light halves of the pair show dashed, and a click changes
 // the half the clicked theme belongs to.
+//
+// Twenty-five themes is a wall, so the grid shows one filter at a time:
+// the tiers (light, dim, dark), the "accessible" tag, or all. It opens
+// on the tier of the theme in use, so the highlighted card is on screen;
+// the filter itself is not remembered.
+let filter: ThemeFilter | null = null;
+
 function renderThemes(p: ThemePreference) {
   const active = resolveTheme(p, systemDark());
+  const current = THEMES.find((t) => t.id === active);
+  filter ??= current?.tier ?? "dark";
   followSystem.checked = p.mode === "system";
   systemHint.textContent =
     p.mode === "system"
       ? ` — ${nameOf(p.dark)} when dark, ${nameOf(p.light)} when light. Click a card to change either.`
       : "";
+  themeInUse.textContent = `In use: ${current?.name ?? active} (${current?.tier ?? "dark"}).`;
+  for (const el of themeFilters.querySelectorAll("button")) el.remove();
+  for (const f of THEME_FILTERS) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    if (f.id === filter) chip.classList.add("active");
+    chip.setAttribute("aria-pressed", String(f.id === filter));
+    chip.textContent = f.label;
+    chip.addEventListener("click", () => {
+      filter = f.id;
+      if (pref) renderThemes(pref);
+    });
+    themeFilters.append(chip);
+  }
   themeCards.replaceChildren();
-  for (const t of THEMES) {
+  for (const t of THEMES.filter((t) => matchesFilter(t, filter ?? "all"))) {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "theme-card";
@@ -122,12 +155,18 @@ function renderThemes(p: ThemePreference) {
     name.textContent = t.name;
     const kind = document.createElement("span");
     kind.className = "theme-card-kind";
-    kind.textContent = t.kind;
+    kind.textContent = t.tier;
     name.append(kind);
     const blurb = document.createElement("span");
     blurb.className = "theme-card-blurb";
     blurb.textContent = t.blurb;
     card.append(name, blurb);
+    if (filter === "accessible" && t.why) {
+      const why = document.createElement("span");
+      why.className = "theme-card-why";
+      why.textContent = t.why;
+      card.append(why);
+    }
     card.addEventListener("click", () => choose(t.id));
     themeCards.append(card);
   }
