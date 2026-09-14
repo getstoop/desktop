@@ -34,7 +34,9 @@ export type ThemeId =
   | "ferry"
   | "bike-lane"
   | "crosswalk"
-  | "concrete";
+  | "concrete"
+  | "scaffolding"
+  | "sidewalk-chalk";
 
 export interface ThemeInfo {
   id: ThemeId;
@@ -250,6 +252,20 @@ export const THEMES: ThemeInfo[] = [
     tags: ["accessible"],
     blurb: "Grey on grey. Colour only where it means something.",
     why: "No tint anywhere; colour only where it means something.",
+  },
+  {
+    id: "scaffolding",
+    name: "Scaffolding",
+    kind: "dark",
+    tier: "dim",
+    blurb: "Sidewalk shed green, safety orange.",
+  },
+  {
+    id: "sidewalk-chalk",
+    name: "Sidewalk Chalk",
+    kind: "dark",
+    tier: "dim",
+    blurb: "Warm concrete, chalk pastels.",
   },
 ];
 
@@ -730,6 +746,44 @@ export const PALETTES: Record<ThemeId, Palette> = {
     danger: "#d98080",
     shadow: "0 12px 32px rgba(0, 0, 0, 0.6)",
     scrim: "rgba(0, 0, 0, 0.65)",
+    scheme: "dark",
+  },
+  scaffolding: {
+    canvas: "#22302a",
+    surface: "#2a3a33",
+    panel: "#32443c",
+    raised: "#3f524a",
+    hover: "rgba(255, 255, 255, 0.045)",
+    border: "#47594f",
+    text: "#eef3ef",
+    textMuted: "#a8b8ae",
+    accent: "#ffa45c",
+    accentSoft: "rgba(255, 164, 92, 0.18)",
+    onAccent: "#1b261f",
+    ok: "#86d29c",
+    warn: "#f0c76a",
+    danger: "#f28c7a",
+    shadow: "0 12px 32px rgba(8, 16, 12, 0.5)",
+    scrim: "rgba(15, 25, 20, 0.6)",
+    scheme: "dark",
+  },
+  "sidewalk-chalk": {
+    canvas: "#2e2c29",
+    surface: "#373431",
+    panel: "#403d39",
+    raised: "#4d4944",
+    hover: "rgba(255, 250, 240, 0.045)",
+    border: "#565149",
+    text: "#f2eee8",
+    textMuted: "#b3aca3",
+    accent: "#e9b4e6",
+    accentSoft: "rgba(233, 180, 230, 0.18)",
+    onAccent: "#2a2724",
+    ok: "#a9d9a0",
+    warn: "#f1d27a",
+    danger: "#f39a8e",
+    shadow: "0 12px 32px rgba(10, 8, 5, 0.5)",
+    scrim: "rgba(20, 17, 14, 0.6)",
     scheme: "dark",
   },
 };
