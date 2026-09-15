@@ -449,6 +449,7 @@ export class MainWindow {
     for (const s of this.slots.values()) s.view.setVisible(false);
     this.page.setVisible(true);
     this.switcher.hide();
+    this.voicePanel.hide(false);
     // The page takes the keyboard, as a server does when it comes
     // forward. Without this the strip keeps it, and whatever was clicked
     // to get here — the gear — stays lit as though still being pressed.
