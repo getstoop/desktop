@@ -183,12 +183,17 @@
         from { opacity: 0; transform: translate(-50%, -160%); }
         to { opacity: 1; transform: translate(-50%, -50%); }
       }
+      #voice.outro { animation: voice-out 240ms cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
+      @keyframes voice-out {
+        from { opacity: 1; transform: translate(-50%, -50%); }
+        to { opacity: 0; transform: translate(-50%, -160%); }
+      }
       @keyframes voice-ping {
         from { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent); }
         to { box-shadow: 0 0 0 5px transparent; }
       }
       @media (prefers-reduced-motion: reduce) {
-        #voice.intro, #voice.intro::after { animation: none; }
+        #voice.intro, #voice.intro::after, #voice.outro { animation: none; }
       }
     </style>
   </head>

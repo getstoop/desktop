@@ -55,20 +55,39 @@ window.shell.onChromeState((state) => {
 
 // The pill moves once when a call starts, so people see there are controls
 // there; the ping ending is what clears it.
+// Leaving lifts it back out before it hides.
 let introducing = false;
+let leaving = false;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 voice.addEventListener("animationend", (event) => {
-  if (event.animationName !== "voice-ping") return;
-  introducing = false;
-  voice.classList.remove("intro");
+  if (event.animationName === "voice-ping") {
+    introducing = false;
+    voice.classList.remove("intro");
+  } else if (event.animationName === "voice-out" && leaving) {
+    leaving = false;
+    voice.hidden = true;
+    voice.classList.remove("outro");
+  }
 });
 
 function drawVoice(v: ChromeState["voice"]) {
   if (!v) {
-    voice.hidden = true;
     introducing = false;
+    if (voice.hidden || leaving) return;
+    if (reducedMotion.matches) {
+      voice.hidden = true;
+      return;
+    }
+    leaving = true;
+    voice.classList.remove("intro");
+    voice.classList.add("outro");
     return;
   }
   if (voice.hidden) introducing = true;
+  if (leaving) {
+    leaving = false;
+    voice.classList.remove("outro");
+  }
   voice.hidden = false;
   voice.className = introducing ? `${v.kind} intro` : v.kind;
   voiceStop.hidden = v.kind !== "screen";
