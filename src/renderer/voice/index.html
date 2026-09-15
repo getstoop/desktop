@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:*" />
+    <title>Voice</title>
+    <link rel="stylesheet" href="../shell.css" />
+    <link rel="stylesheet" href="./voice.css" />
+  </head>
+  <body class="voice-overlay">
+    <div id="backdrop" class="voice-backdrop"></div>
+    <div id="panel" class="voice-panel" role="dialog" aria-label="Voice" tabindex="-1">
+      <div class="voice-head">
+        <strong id="channel"></strong>
+        <span id="where"></span>
+      </div>
+      <div id="rows" class="voice-rows"></div>
+      <button id="go" type="button" class="voice-go"></button>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

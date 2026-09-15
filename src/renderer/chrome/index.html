@@ -111,6 +111,90 @@
       }
       #controls button:hover { background: rgba(127, 127, 127, 0.25); }
       #controls button.close:hover { background: #e05c5c; color: #fff; }
+      /* The live indicator: centred, the one stretch of the strip nothing
+         else claims, so it stays put whichever side the window buttons
+         are on. --ok and --danger come from the theme. */
+      #voice {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        align-items: center;
+        max-width: 44vw;
+        border-radius: 999px;
+        background: rgba(127, 127, 127, 0.18);
+        -webkit-app-region: no-drag;
+      }
+      #voice[hidden] { display: none; }
+      #voice-open {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        height: 22px;
+        padding: 0 9px 0 7px;
+        border: none;
+        border-radius: 999px;
+        background: none;
+        color: inherit;
+        font: inherit;
+        opacity: 0.75;
+      }
+      #voice-open svg { flex: 0 0 auto; }
+      #voice-open svg.off { opacity: 0.6; }
+      #where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #voice.mic, #voice.camera { background: color-mix(in srgb, var(--ok) 20%, transparent); }
+      #voice.mic #voice-open, #voice.camera #voice-open { opacity: 1; }
+      #voice.mic svg:not(.off), #voice.camera svg:not(.off) { color: var(--ok); }
+      #voice.screen { padding-right: 3px; background: var(--danger); color: #fff; }
+      #voice.screen #voice-open { opacity: 1; }
+      #voice.error { background: none; box-shadow: inset 0 0 0 1px var(--danger); color: var(--danger); }
+      #voice.error #voice-open { opacity: 1; }
+      #voice.joining #voice-open { font-style: italic; }
+      #voice-stop {
+        flex: 0 0 auto;
+        height: 16px;
+        padding: 0 8px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.22);
+        color: inherit;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      #voice-stop[hidden] { display: none; }
+      #voice-open:focus-visible, #voice-stop:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+      /* The call's first moment: the pill drops into the strip, then pings
+         twice in its own colour. */
+      #voice::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+      }
+      #voice.mic::after, #voice.camera::after { color: var(--ok); }
+      #voice.screen::after, #voice.error::after { color: var(--danger); }
+      #voice.intro { animation: voice-in 360ms cubic-bezier(0.2, 0, 0, 1); }
+      #voice.intro::after { animation: voice-ping 900ms ease-out 300ms 2; }
+      @keyframes voice-in {
+        from { opacity: 0; transform: translate(-50%, -160%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+      }
+      #voice.outro { animation: voice-out 240ms cubic-bezier(0.4, 0, 1, 1) forwards; pointer-events: none; }
+      @keyframes voice-out {
+        from { opacity: 1; transform: translate(-50%, -50%); }
+        to { opacity: 0; transform: translate(-50%, -160%); }
+      }
+      @keyframes voice-ping {
+        from { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent); }
+        to { box-shadow: 0 0 0 5px transparent; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #voice.intro, #voice.intro::after, #voice.outro { animation: none; }
+      }
     </style>
   </head>
   <body>
@@ -119,6 +203,10 @@
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
       <span id="dot" hidden></span>
     </button>
+    <div id="voice" hidden>
+      <button id="voice-open" type="button"><span id="voice-icons"></span><span id="where"></span></button>
+      <button id="voice-stop" type="button" hidden>Stop</button>
+    </div>
     <div id="right">
       <button id="update" type="button" hidden title="This server is newer than this app. Update the app to use everything it offers.">Update the app</button>
       <button id="gear" type="button" aria-pressed="false" aria-label="App settings">

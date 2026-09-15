@@ -1,11 +1,13 @@
 // window.shell, as preload/shell.ts exposes it to the app's own pages.
 import type {
   ChromeState,
+  ChromeVoice,
   Palette,
   PickerSource,
   Probe,
   SettingsView,
   SwitcherView,
+  VoiceAction,
 } from "../shared/bridge";
 import type { ThemePreference } from "../shared/themes";
 
@@ -37,6 +39,10 @@ declare global {
       closeSwitcher(): void;
       onTheme(handler: (palette: Palette) => void): void;
       onChromeState(handler: (state: ChromeState) => void): void;
+      voiceAction(action: "open" | "stop-screen"): void;
+      onVoicePanel(handler: (view: ChromeVoice) => void): void;
+      voicePanelAction(action: VoiceAction): void;
+      closeVoicePanel(): void;
     };
   }
 }

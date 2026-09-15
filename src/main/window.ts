@@ -10,10 +10,13 @@ import {
 } from "electron";
 import type {
   ChromeState,
+  ChromeVoice,
   Palette,
   ServerRow,
   SettingsView,
   SwitcherView,
+  VoiceAction,
+  VoiceReport,
 } from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
 import { type ThemeId, themePreference } from "../shared/themes";
@@ -32,6 +35,7 @@ import { loadWindowState, saveWindowState, type WindowState } from "./state";
 import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
+import { parseVoiceReport, trayVoiceItems, voiceLabel } from "./voice";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -71,6 +75,8 @@ interface Slot {
   version: string;
   // URL a deep link asked for, loaded by the next checkAndLoad.
   pending?: string;
+  // What the page says it captures; null outside voice.
+  voice: VoiceReport | null;
 }
 
 // A loaded server is asked again this long after its last answer, when
@@ -94,6 +100,8 @@ export class MainWindow {
   // The theme the app wears now, resolved from the preference.
   private theme: ThemeId;
   private switcher: Switcher;
+  // The live indicator's popover, over whichever server is in front.
+  private voicePanel: Switcher<ChromeVoice>;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
@@ -101,6 +109,8 @@ export class MainWindow {
   constructor() {
     this.tray = new AppTray({
       serverItems: () => this.serverMenuItems(),
+      voiceItems: () => this.voiceTrayItems(),
+      voiceTooltip: () => this.voiceTooltip(),
       unreadTotal: () => {
         let total = 0;
         for (const s of this.slots.values()) total += s.badge;
@@ -134,6 +144,13 @@ export class MainWindow {
       (view) => this.load(view, "switcher"),
       () => this.refocus(),
     );
+    this.voicePanel = new Switcher<ChromeVoice>(
+      this.win,
+      STRIP_HEIGHT,
+      (view) => this.load(view, "voice"),
+      () => this.refocus(),
+      IPC.voicePanel,
+    );
     this.chrome = this.shellView("chrome");
     this.page = this.shellView("add");
     this.win.contentView.addChildView(this.chrome);
@@ -143,7 +160,10 @@ export class MainWindow {
       this.remember();
     });
     this.win.on("move", () => this.remember());
-    this.win.on("blur", () => this.switcher.hide(false));
+    this.win.on("blur", () => {
+      this.switcher.hide(false);
+      this.voicePanel.hide(false);
+    });
     this.win.on("focus", () => this.recheck(false));
     const poll = setInterval(() => this.recheck(true), GATE_POLL_MS);
     this.win.on("closed", () => clearInterval(poll));
@@ -158,6 +178,7 @@ export class MainWindow {
     this.win.on("closed", () => {
       unfollow();
       this.switcher.destroy();
+      this.voicePanel.destroy();
       this.tray.destroy();
     });
     if (this.state.maximized) this.win.maximize();
@@ -264,9 +285,21 @@ export class MainWindow {
       probedAt: 0,
       newer: false,
       version: "",
+      voice: null,
     };
     this.slots.set(server.id, slot);
     const wc = view.webContents;
+    // A page that reloads, navigates away or crashes has dropped its call
+    // without saying so.
+    const dropVoice = () => {
+      if (!slot.voice) return;
+      slot.voice = null;
+      this.voiceChanged();
+    };
+    wc.on("did-start-navigation", (details) => {
+      if (details.isMainFrame && !details.isSameDocument) dropVoice();
+    });
+    wc.on("render-process-gone", dropVoice);
     wc.setWindowOpenHandler(({ url }) => {
       void shell.openExternal(url);
       return { action: "deny" };
@@ -372,6 +405,7 @@ export class MainWindow {
     this.page.setBounds(body);
     for (const slot of this.slots.values()) slot.view.setBounds(body);
     this.switcher.layout();
+    this.voicePanel.layout();
   }
 
   // ---- what is in front ----
@@ -455,12 +489,19 @@ export class MainWindow {
       platform: process.platform,
       newer: slot?.newer ?? false,
       settings: this.pageName === "settings",
+      voice: this.chromeVoice(),
+      ok: palette.ok,
+      danger: palette.danger,
     };
     this.win.setBackgroundColor(palette.canvas);
     this.chrome.webContents.send(IPC.chromeState, state);
     this.page.webContents.send(IPC.theme, palette);
     this.switcher.theme(palette);
     this.refreshSwitcher();
+    this.voicePanel.theme(palette);
+    // The popover follows the call: repainted as it changes, gone with it.
+    if (state.voice) this.voicePanel.update(state.voice);
+    else this.voicePanel.hide(false);
   }
 
   // ---- servers ----
@@ -493,6 +534,7 @@ export class MainWindow {
       this.win.contentView.removeChildView(slot.view);
       slot.view.webContents.close();
       this.slots.delete(id);
+      if (slot.voice) this.voiceChanged();
     }
     this.servers = this.servers.filter((s) => s.id !== id);
     saveServers(this.servers);
@@ -553,7 +595,10 @@ export class MainWindow {
 
   toggleSwitcher() {
     if (this.switcher.open) this.switcher.hide();
-    else this.switcher.show(this.switcherView());
+    else {
+      this.voicePanel.hide(false);
+      this.switcher.show(this.switcherView());
+    }
   }
 
   closeSwitcher() {
@@ -653,6 +698,84 @@ export class MainWindow {
     app.setBadgeCount(total);
     this.pushChrome();
     this.tray.refresh();
+  }
+
+  // ---- the live indicator ----
+
+  setVoice(webContentsId: number, raw: unknown) {
+    const slot = this.serverFor(webContentsId);
+    if (!slot) return;
+    slot.voice = parseVoiceReport(raw);
+    this.voiceChanged();
+  }
+
+  private voiceChanged() {
+    this.pushChrome();
+    this.tray.refresh();
+  }
+
+  // The server whose page holds voice. Two at once is what STOOP-255
+  // prevents; until then the first found speaks for the strip.
+  private voiceSlot(): Slot | undefined {
+    for (const slot of this.slots.values()) if (slot.voice) return slot;
+    return undefined;
+  }
+
+  // In front, the space names the call; behind, the server does, because
+  // that is what someone switching back would look for.
+  private voiceWhere(slot: Slot): string {
+    const voice = slot.voice;
+    if (!voice) return "";
+    const place =
+      slot.server.id === this.front ? voice.space : slot.server.name;
+    return `${voice.channel} · ${place}`;
+  }
+
+  private chromeVoice(): ChromeVoice | null {
+    const slot = this.voiceSlot();
+    if (!slot?.voice) return null;
+    const { kind, mic, camera, screen, channel } = slot.voice;
+    return { kind, mic, camera, screen, channel, where: this.voiceWhere(slot) };
+  }
+
+  // Acts on the call where it is. Only "show" switches servers.
+  voiceAction(action: VoiceAction) {
+    const slot = this.voiceSlot();
+    if (!slot) return;
+    if (action === "show") {
+      this.voicePanel.hide(false);
+      this.reveal();
+      this.show(slot.server.id);
+    }
+    slot.view.webContents.send(IPC.voiceAction, action);
+  }
+
+  toggleVoicePanel() {
+    if (this.voicePanel.open) {
+      this.voicePanel.hide();
+      return;
+    }
+    const voice = this.chromeVoice();
+    if (!voice) return;
+    this.switcher.hide(false);
+    this.voicePanel.show(voice);
+  }
+
+  closeVoicePanel() {
+    this.voicePanel.hide();
+  }
+
+  voiceTrayItems(): MenuItemConstructorOptions[] {
+    const slot = this.voiceSlot();
+    if (!slot?.voice) return [];
+    return trayVoiceItems(slot.voice, this.voiceWhere(slot), (action) =>
+      this.voiceAction(action),
+    );
+  }
+
+  voiceTooltip(): string {
+    const voice = this.voiceSlot()?.voice;
+    return voice ? voiceLabel(voice.kind) : "";
   }
 
   // ---- the menu ----
