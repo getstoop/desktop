@@ -17,6 +17,7 @@
         </button>
         <p class="eyebrow">App settings</p>
         <button type="button" class="nav-link active" data-section="general">General</button>
+        <button type="button" class="nav-link" data-section="notifications">Notifications</button>
         <button type="button" class="nav-link" data-section="appearance">Appearance</button>
         <button type="button" class="nav-link" data-section="servers">Servers</button>
         <button type="button" class="nav-link" data-section="about">About</button>
@@ -41,6 +42,36 @@
                 <span class="setting-desc">Closing the window leaves Stoop in the menu bar and voice keeps going. Quit from there.</span>
               </div>
               <div class="setting-control"><input id="keepRunning" type="checkbox" /></div>
+            </div>
+          </section>
+
+          <section id="notifications" class="section" hidden>
+            <header class="settings-head">
+              <h1>Notifications</h1>
+              <p>What is allowed to interrupt you, and how you appear, on every server you have open in this app. A server opened in a browser keeps its own.</p>
+            </header>
+            <div class="setting-row">
+              <div class="setting-text">
+                <span class="setting-title">Status</span>
+                <span class="setting-desc">How you appear to others, on every server here. Away is set for you after ten idle minutes at this computer; Do not disturb also silences banners. Servers running an older Stoop keep their own status setting.</span>
+              </div>
+              <div class="setting-control">
+                <div id="statusOptions" class="status-options" role="radiogroup" aria-label="Status"></div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <span class="setting-title">Desktop notifications</span>
+                <span class="setting-desc">A native banner when someone mentions you, whichever server it was. Off here means no banners from any of them.</span>
+              </div>
+              <div class="setting-control"><input id="desktopNotifications" type="checkbox" /></div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-text">
+                <span class="setting-title">Check they arrive</span>
+                <span class="setting-desc">Nothing? Your computer keeps its own switch for Stoop, in the system's notification settings.</span>
+              </div>
+              <div class="setting-control"><button id="testNotification" type="button" class="chip">Send a test notification</button></div>
             </div>
           </section>
 

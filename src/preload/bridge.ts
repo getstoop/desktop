@@ -2,11 +2,21 @@ import { contextBridge, ipcRenderer } from "electron";
 import {
   BRIDGE,
   IPC,
+  type PresenceChoice,
   type ShellTheme,
   type ShortcutName,
   type StoopBridge,
   type VoiceAction,
 } from "../shared/bridge";
+
+// Whether App settings is letting banners through, kept current here.
+// contextBridge copies values into the page once, at load, so a field
+// would go stale the moment the switch moved; a function is proxied and
+// runs in this world, where the variable below is live.
+let notificationsOn = fromArgs("--stoop-notifications=") !== "false";
+ipcRenderer.on(IPC.stoopNotifications, (_: unknown, on: boolean) => {
+  notificationsOn = on;
+});
 
 // Runs in every server page with contextIsolation on: the page sees only
 // this object, never Node or ipcRenderer.
@@ -38,6 +48,13 @@ const stoop: StoopBridge = {
     ipcRenderer.on(IPC.voiceAction, listener);
     return () => ipcRenderer.removeListener(IPC.voiceAction, listener);
   },
+  status: statusFromArgs(),
+  onStatus(handler) {
+    const listener = (_: unknown, status: PresenceChoice) => handler(status);
+    ipcRenderer.on(IPC.stoopStatus, listener);
+    return () => ipcRenderer.removeListener(IPC.stoopStatus, listener);
+  },
+  notificationsAllowed: () => notificationsOn,
 };
 
 contextBridge.exposeInMainWorld("stoop", stoop);
@@ -63,6 +80,14 @@ function themeFromArgs(): ShellTheme {
     // Fall through.
   }
   return { scheme: "dark", tokens: {} };
+}
+
+// Main always sends one. Anything else is a shell too old to have an
+// opinion or an argument that did not arrive, and present is the safer
+// guess than reporting someone absent who is sitting right there.
+function statusFromArgs(): PresenceChoice {
+  const said = fromArgs("--stoop-status=");
+  return said === "away" || said === "dnd" ? said : "online";
 }
 
 function fromArgs(prefix: string): string {
