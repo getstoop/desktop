@@ -49,6 +49,10 @@ function start() {
   app.setLoginItemSettings({ openAtLogin: main.tray.settings.launchAtLogin });
   main.rebuildAppMenu();
 
+  // A server page asking, as it loads, where the do not disturb switch is.
+  ipcMain.on(IPC.getDnd, (event) => {
+    event.returnValue = main?.dnd ?? { on: false, until: null };
+  });
   ipcMain.on(IPC.setBadge, (event, count: number) =>
     main?.setBadge(event.sender.id, count),
   );
@@ -159,8 +163,9 @@ function settingsPatch(raw: unknown): Partial<Settings> {
   if (typeof p.launchAtLogin === "boolean") out.launchAtLogin = p.launchAtLogin;
   if (p.theme && typeof p.theme === "object")
     out.theme = p.theme as Settings["theme"];
-  if (p.status === "online" || p.status === "away" || p.status === "dnd")
-    out.status = p.status;
+  if (typeof p.dnd === "boolean") out.dnd = p.dnd;
+  if (p.dndUntil === null || Number.isFinite(p.dndUntil))
+    out.dndUntil = p.dndUntil as number | null;
   if (typeof p.notifications === "boolean") out.notifications = p.notifications;
   return out;
 }

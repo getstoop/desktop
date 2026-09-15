@@ -1,8 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 import {
   BRIDGE,
+  type DndSwitch,
   IPC,
-  type PresenceChoice,
   type ShellTheme,
   type ShortcutName,
   type StoopBridge,
@@ -48,11 +48,14 @@ const stoop: StoopBridge = {
     ipcRenderer.on(IPC.voiceAction, listener);
     return () => ipcRenderer.removeListener(IPC.voiceAction, listener);
   },
-  status: statusFromArgs(),
-  onStatus(handler) {
-    const listener = (_: unknown, status: PresenceChoice) => handler(status);
-    ipcRenderer.on(IPC.stoopStatus, listener);
-    return () => ipcRenderer.removeListener(IPC.stoopStatus, listener);
+  // Asked of main as the page loads rather than passed as an argument: a
+  // view's arguments are fixed when it is made, and a page reloaded after
+  // the switch moved would start from the old answer.
+  dnd: ipcRenderer.sendSync(IPC.getDnd) as DndSwitch,
+  onDnd(handler) {
+    const listener = (_: unknown, dnd: DndSwitch) => handler(dnd);
+    ipcRenderer.on(IPC.stoopDnd, listener);
+    return () => ipcRenderer.removeListener(IPC.stoopDnd, listener);
   },
   notificationsAllowed: () => notificationsOn,
 };
@@ -80,14 +83,6 @@ function themeFromArgs(): ShellTheme {
     // Fall through.
   }
   return { scheme: "dark", tokens: {} };
-}
-
-// Main always sends one. Anything else is a shell too old to have an
-// opinion or an argument that did not arrive, and present is the safer
-// guess than reporting someone absent who is sitting right there.
-function statusFromArgs(): PresenceChoice {
-  const said = fromArgs("--stoop-status=");
-  return said === "away" || said === "dnd" ? said : "online";
 }
 
 function fromArgs(prefix: string): string {

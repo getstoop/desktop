@@ -1,8 +1,4 @@
-import type {
-  Palette,
-  PresenceChoice,
-  SettingsView,
-} from "../../shared/bridge";
+import type { Palette, SettingsView } from "../../shared/bridge";
 import {
   cssTokens,
   matchesFilter,
@@ -35,9 +31,7 @@ const followSystem = document.getElementById(
   "followSystem",
 ) as HTMLInputElement;
 const systemHint = document.getElementById("systemHint") as HTMLSpanElement;
-const statusOptions = document.getElementById(
-  "statusOptions",
-) as HTMLDivElement;
+const dndDuration = document.getElementById("dndDuration") as HTMLSelectElement;
 // Not "notifications": the section around it already owns that id, and
 // getElementById would hand back the section, whose .checked is nothing.
 const desktopNotifications = document.getElementById(
@@ -69,7 +63,7 @@ function render(view: SettingsView) {
   launchAtLogin.checked = view.launchAtLogin;
   keepRunning.checked = view.keepRunning;
   desktopNotifications.checked = view.notifications;
-  renderStatus(view.status);
+  renderDnd(view);
   version.textContent = view.version;
   pref = view.theme;
   renderThemes(view.theme);
@@ -118,38 +112,60 @@ function render(view: SettingsView) {
 
 // ---- notifications ----
 
-// The web app's own status control, redrawn here: three choices, the
-// picked one ringed, each with the dot its server pages draw. What is
-// shown is the choice, not what the servers were told — ten idle minutes
-// report Away on top of it without unpicking Online.
-const STATUSES: { value: PresenceChoice; label: string }[] = [
-  { value: "online", label: "Online" },
-  { value: "away", label: "Away" },
-  { value: "dnd", label: "Do not disturb" },
-];
+// The same menu account settings offers: off, or on for a while. An end
+// already chosen shows as its own entry, and the page redraws when it
+// passes.
+const DND_HOURS: Record<string, number> = {
+  "1h": 1,
+  "3h": 3,
+  "1d": 24,
+  "1w": 168,
+};
+const untilOption = document.createElement("option");
+untilOption.value = "until";
+let dndRedraw: ReturnType<typeof setTimeout> | undefined;
 
-function renderStatus(status: PresenceChoice) {
-  statusOptions.replaceChildren();
-  for (const option of STATUSES) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "status-option";
-    button.setAttribute("role", "radio");
-    const on = option.value === status;
-    button.setAttribute("aria-checked", String(on));
-    if (on) button.classList.add("active");
-    const dot = document.createElement("span");
-    dot.className = `online-dot ${option.value}`;
-    const label = document.createElement("span");
-    label.textContent = option.label;
-    button.append(dot, label);
-    button.addEventListener("click", async () => {
-      render(await window.shell.setSettings({ status: option.value }));
-    });
-    statusOptions.append(button);
+function renderDnd(view: SettingsView) {
+  clearTimeout(dndRedraw);
+  if (view.dnd && view.dndUntil !== null) {
+    untilOption.textContent = `Until ${endLabel(new Date(view.dndUntil))}`;
+    dndDuration.options[0].after(untilOption);
+    dndRedraw = setTimeout(
+      () => void load(),
+      Math.max(0, view.dndUntil - Date.now()),
+    );
+  } else {
+    untilOption.remove();
   }
+  dndDuration.value = !view.dnd
+    ? "off"
+    : view.dndUntil === null
+      ? "never"
+      : "until";
 }
 
+// The time today, otherwise the day and time.
+function endLabel(d: Date): string {
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (d.toDateString() === new Date().toDateString()) return time;
+  const day = d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return `${day}, ${time}`;
+}
+
+dndDuration.addEventListener("change", async () => {
+  const choice = dndDuration.value;
+  const hours = DND_HOURS[choice];
+  render(
+    await window.shell.setSettings(
+      choice === "off"
+        ? { dnd: false }
+        : {
+            dnd: true,
+            dndUntil: hours ? Date.now() + hours * 60 * 60 * 1000 : null,
+          },
+    ),
+  );
+});
 desktopNotifications.addEventListener("change", async () => {
   render(
     await window.shell.setSettings({

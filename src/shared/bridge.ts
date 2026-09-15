@@ -8,10 +8,6 @@ export const BRIDGE = 3;
 
 export type ShortcutName = "pushToTalk";
 
-// Bridge 3. How this side names a status. Strings rather than the
-// realtime enum: the shell has no protos, and the page maps them.
-export type PresenceChoice = "online" | "away" | "dnd";
-
 export interface StoopBridge {
   bridge: number;
   version: string;
@@ -28,12 +24,12 @@ export interface StoopBridge {
   setVoice(report: VoiceReport | null): void;
   // Bridge 3. The strip or tray asks the page holding voice to act.
   onVoiceAction(handler: (action: VoiceAction) => void): () => void;
-  // Bridge 3. The status the app keeps for every server it holds: one
-  // choice, and Away decided from the computer rather than from whichever
-  // page happens to be in front. A page that is behind sees no input at
-  // all, so it cannot tell "gone" from "reading something else".
-  status: PresenceChoice;
-  onStatus(handler: (status: PresenceChoice) => void): () => void;
+  // Bridge 3. The app's one do not disturb switch, for every server it
+  // holds. The page sets its own server to match: to on whenever this is
+  // on, and to off only when the switch is turned off, never on load, so
+  // opening the app can't clear do not disturb set from another device.
+  dnd: DndSwitch;
+  onDnd(handler: (dnd: DndSwitch) => void): () => void;
   // Bridge 3. Whether App settings is letting desktop banners through,
   // asked at the moment one would fire. A function because contextBridge
   // copies values across once, at load, and this one changes while the
@@ -108,7 +104,8 @@ export const IPC = {
   setBadge: "stoop:set-badge",
   shortcut: "stoop:shortcut",
   stoopTheme: "stoop:theme",
-  stoopStatus: "stoop:status",
+  stoopDnd: "stoop:dnd",
+  getDnd: "stoop:get-dnd",
   stoopNotifications: "stoop:notifications",
   probe: "shell:probe",
   addServer: "shell:add-server",
@@ -190,15 +187,21 @@ export interface PickerSource {
   icon: string; // data URL, or empty
 }
 
+// The do not disturb switch as a server page gets it: on or off, and when
+// it ends (epoch ms, or null for never). One past its end is off.
+export interface DndSwitch {
+  on: boolean;
+  until: number | null;
+}
+
 // What the settings page shows, pulled from main on load and after a
 // change.
 export interface SettingsView {
   keepRunning: boolean;
   launchAtLogin: boolean;
   theme: ThemePreference;
-  // The status as chosen, not as reported: the settings page shows what
-  // the person picked, while idleness may be reporting Away on top of it.
-  status: PresenceChoice;
+  dnd: boolean;
+  dndUntil: number | null;
   notifications: boolean;
   version: string;
   platform: string;

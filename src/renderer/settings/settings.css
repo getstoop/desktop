@@ -113,6 +113,19 @@
   gap: 8px;
   align-items: center;
 }
+.setting-control select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.setting-control select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .setting-control input[type="checkbox"] {
   width: 18px;
   height: 18px;
@@ -352,47 +365,4 @@
 }
 .theme-system .hint {
   color: var(--text-muted);
-}
-
-/* Status: three choices in a row, the picked one ringed, each with the
-   dot a server page draws beside a name. The colours are the palette's
-   own, so every theme carries them. */
-.status-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-.status-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--raised);
-  color: var(--text);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.status-option:hover {
-  border-color: var(--accent);
-}
-.status-option.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  font-weight: 600;
-}
-.online-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-  background: var(--ok);
-}
-.online-dot.away {
-  background: var(--warn);
-}
-.online-dot.dnd {
-  background: var(--danger);
 }

@@ -5,6 +5,7 @@ import {
   Menu,
   type MenuItemConstructorOptions,
   Notification,
+  powerMonitor,
   session,
   shell,
   WebContentsView,
@@ -12,6 +13,7 @@ import {
 import type {
   ChromeState,
   ChromeVoice,
+  DndSwitch,
   Palette,
   ServerRow,
   SettingsView,
@@ -31,9 +33,8 @@ import {
   type Server,
   saveServers,
 } from "./servers";
-import { presenceChoice, type Settings } from "./settings";
+import type { Settings } from "./settings";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
-import { StatusWatch } from "./status";
 import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
@@ -108,11 +109,11 @@ export class MainWindow {
   private switcher: Switcher;
   // The live indicator's popover, over whichever server is in front.
   private voicePanel: Switcher<ChromeVoice>;
-  private status: StatusWatch;
   // The strip's notice and the timer that clears it.
   private notice = "";
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
+  private dndTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
 
@@ -137,9 +138,6 @@ export class MainWindow {
       },
     });
     this.theme = activeTheme(this.tray.settings.theme);
-    this.status = new StatusWatch(this.tray.settings.status, (status) =>
-      this.tellServers(IPC.stoopStatus, status),
-    );
     this.win = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -188,9 +186,13 @@ export class MainWindow {
       }
     });
     const unfollow = onSystemTheme(() => this.applyTheme());
+    this.armDndEnd();
+    const rearm = () => this.armDndEnd();
+    powerMonitor.on("resume", rearm);
     this.win.on("closed", () => {
       unfollow();
-      this.status.stop();
+      clearTimeout(this.dndTimer);
+      powerMonitor.off("resume", rearm);
       this.switcher.destroy();
       this.voicePanel.destroy();
       this.tray.destroy();
@@ -286,8 +288,7 @@ export class MainWindow {
         additionalArguments: [
           `--stoop-desktop-version=${app.getVersion()}`,
           `--stoop-theme=${encodeURIComponent(JSON.stringify(shellTheme(this.theme)))}`,
-          `--stoop-status=${this.status.effective()}`,
-          `--stoop-notifications=${this.tray.settings.notifications}`,
+          `--stoop-notifications=${this.bannersAllowed()}`,
         ],
       },
     });
@@ -332,7 +333,6 @@ export class MainWindow {
     // again here lands.
     wc.on("did-finish-load", () => {
       wc.send(IPC.stoopTheme, shellTheme(this.theme));
-      wc.send(IPC.stoopStatus, this.status.effective());
     });
     wc.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
       if (!isMainFrame || code === -3) return;
@@ -481,17 +481,56 @@ export class MainWindow {
   updateSettings(patch: Partial<Settings>) {
     const next = { ...patch };
     if ("theme" in next) next.theme = themePreference(next.theme);
-    if ("status" in next) next.status = presenceChoice(next.status);
+    // An end belongs to an "on", and one already past is off.
+    if ("dnd" in next || "dndUntil" in next) {
+      const until =
+        "dndUntil" in next
+          ? (next.dndUntil ?? null)
+          : this.tray.settings.dndUntil;
+      next.dnd =
+        (next.dnd ?? this.tray.settings.dnd) &&
+        (until === null || until > Date.now());
+      next.dndUntil = next.dnd ? until : null;
+    }
     this.tray.update(next);
     this.applyTheme();
-    // The watch decides what the servers are told; setting the choice
-    // announces it when the answer moved.
-    if (next.status) this.status.set(next.status);
-    if ("notifications" in next)
-      this.tellServers(
-        IPC.stoopNotifications,
-        this.tray.settings.notifications,
-      );
+    if ("dnd" in next) {
+      // Every server page sets its own server to match the switch.
+      this.tellServers(IPC.stoopDnd, this.dnd);
+      this.armDndEnd();
+    }
+    if ("notifications" in next || "dnd" in next)
+      this.tellServers(IPC.stoopNotifications, this.bannersAllowed());
+  }
+
+  // The switch as it stands, for a page asking as it loads.
+  get dnd(): DndSwitch {
+    const { dnd, dndUntil } = this.tray.settings;
+    const on = dnd && (dndUntil === null || dndUntil > Date.now());
+    return { on, until: on ? dndUntil : null };
+  }
+
+  // When the switch's end passes, banners come back. No server is told:
+  // each ends it on its own, and an "off" from here would clear one set
+  // since on another device. Armed again after sleep, which holds timers.
+  private armDndEnd() {
+    clearTimeout(this.dndTimer);
+    const { dnd, dndUntil } = this.tray.settings;
+    if (!dnd || dndUntil === null) return;
+    this.dndTimer = setTimeout(
+      () => {
+        this.tray.update({ dnd: false, dndUntil: null });
+        this.tellServers(IPC.stoopNotifications, this.bannersAllowed());
+      },
+      Math.max(0, dndUntil - Date.now()),
+    );
+  }
+
+  // Banners come through only with notifications on and do not disturb
+  // off; the app holds them itself the moment either changes, before any
+  // server has answered.
+  private bannersAllowed(): boolean {
+    return this.tray.settings.notifications && !this.dnd.on;
   }
 
   // One message to every server page that has one to receive it. The
@@ -727,7 +766,8 @@ export class MainWindow {
       keepRunning: this.tray.settings.keepRunning,
       launchAtLogin: this.tray.settings.launchAtLogin,
       theme: this.tray.settings.theme,
-      status: this.tray.settings.status,
+      dnd: this.dnd.on,
+      dndUntil: this.dnd.until,
       notifications: this.tray.settings.notifications,
       version: app.getVersion(),
       platform: process.platform,
