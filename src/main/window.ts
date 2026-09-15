@@ -31,9 +31,8 @@ import {
   type Server,
   saveServers,
 } from "./servers";
-import { presenceChoice, type Settings } from "./settings";
+import type { Settings } from "./settings";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
-import { StatusWatch } from "./status";
 import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
@@ -108,7 +107,6 @@ export class MainWindow {
   private switcher: Switcher;
   // The live indicator's popover, over whichever server is in front.
   private voicePanel: Switcher<ChromeVoice>;
-  private status: StatusWatch;
   // The strip's notice and the timer that clears it.
   private notice = "";
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -137,9 +135,6 @@ export class MainWindow {
       },
     });
     this.theme = activeTheme(this.tray.settings.theme);
-    this.status = new StatusWatch(this.tray.settings.status, (status) =>
-      this.tellServers(IPC.stoopStatus, status),
-    );
     this.win = new BrowserWindow({
       width: 1200,
       height: 800,
@@ -190,7 +185,6 @@ export class MainWindow {
     const unfollow = onSystemTheme(() => this.applyTheme());
     this.win.on("closed", () => {
       unfollow();
-      this.status.stop();
       this.switcher.destroy();
       this.voicePanel.destroy();
       this.tray.destroy();
@@ -286,8 +280,7 @@ export class MainWindow {
         additionalArguments: [
           `--stoop-desktop-version=${app.getVersion()}`,
           `--stoop-theme=${encodeURIComponent(JSON.stringify(shellTheme(this.theme)))}`,
-          `--stoop-status=${this.status.effective()}`,
-          `--stoop-notifications=${this.tray.settings.notifications}`,
+          `--stoop-notifications=${this.bannersAllowed()}`,
         ],
       },
     });
@@ -332,7 +325,6 @@ export class MainWindow {
     // again here lands.
     wc.on("did-finish-load", () => {
       wc.send(IPC.stoopTheme, shellTheme(this.theme));
-      wc.send(IPC.stoopStatus, this.status.effective());
     });
     wc.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
       if (!isMainFrame || code === -3) return;
@@ -481,17 +473,24 @@ export class MainWindow {
   updateSettings(patch: Partial<Settings>) {
     const next = { ...patch };
     if ("theme" in next) next.theme = themePreference(next.theme);
-    if ("status" in next) next.status = presenceChoice(next.status);
     this.tray.update(next);
     this.applyTheme();
-    // The watch decides what the servers are told; setting the choice
-    // announces it when the answer moved.
-    if (next.status) this.status.set(next.status);
-    if ("notifications" in next)
-      this.tellServers(
-        IPC.stoopNotifications,
-        this.tray.settings.notifications,
-      );
+    // Every server page sets its own server to match the switch.
+    if ("dnd" in next) this.tellServers(IPC.stoopDnd, this.tray.settings.dnd);
+    if ("notifications" in next || "dnd" in next)
+      this.tellServers(IPC.stoopNotifications, this.bannersAllowed());
+  }
+
+  // The switch as it stands, for a page asking as it loads.
+  get dnd(): boolean {
+    return this.tray.settings.dnd;
+  }
+
+  // Banners come through only with notifications on and do not disturb
+  // off; the app holds them itself the moment either changes, before any
+  // server has answered.
+  private bannersAllowed(): boolean {
+    return this.tray.settings.notifications && !this.tray.settings.dnd;
   }
 
   // One message to every server page that has one to receive it. The
@@ -727,7 +726,7 @@ export class MainWindow {
       keepRunning: this.tray.settings.keepRunning,
       launchAtLogin: this.tray.settings.launchAtLogin,
       theme: this.tray.settings.theme,
-      status: this.tray.settings.status,
+      dnd: this.tray.settings.dnd,
       notifications: this.tray.settings.notifications,
       version: app.getVersion(),
       platform: process.platform,

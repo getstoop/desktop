@@ -4,7 +4,6 @@ import type {
   ChromeVoice,
   Palette,
   PickerSource,
-  PresenceChoice,
   Probe,
   SettingsView,
   SwitcherView,
@@ -26,7 +25,7 @@ declare global {
         keepRunning?: boolean;
         launchAtLogin?: boolean;
         theme?: ThemePreference;
-        status?: PresenceChoice;
+        dnd?: boolean;
         notifications?: boolean;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
