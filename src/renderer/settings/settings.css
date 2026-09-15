@@ -113,6 +113,19 @@
   gap: 8px;
   align-items: center;
 }
+.setting-control select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.setting-control select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .setting-control input[type="checkbox"] {
   width: 18px;
   height: 18px;

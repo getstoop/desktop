@@ -5,6 +5,7 @@ import {
   Menu,
   type MenuItemConstructorOptions,
   Notification,
+  powerMonitor,
   session,
   shell,
   WebContentsView,
@@ -12,6 +13,7 @@ import {
 import type {
   ChromeState,
   ChromeVoice,
+  DndSwitch,
   Palette,
   ServerRow,
   SettingsView,
@@ -111,6 +113,7 @@ export class MainWindow {
   private notice = "";
   private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
+  private dndTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
 
@@ -183,8 +186,13 @@ export class MainWindow {
       }
     });
     const unfollow = onSystemTheme(() => this.applyTheme());
+    this.armDndEnd();
+    const rearm = () => this.armDndEnd();
+    powerMonitor.on("resume", rearm);
     this.win.on("closed", () => {
       unfollow();
+      clearTimeout(this.dndTimer);
+      powerMonitor.off("resume", rearm);
       this.switcher.destroy();
       this.voicePanel.destroy();
       this.tray.destroy();
@@ -473,24 +481,56 @@ export class MainWindow {
   updateSettings(patch: Partial<Settings>) {
     const next = { ...patch };
     if ("theme" in next) next.theme = themePreference(next.theme);
+    // An end belongs to an "on", and one already past is off.
+    if ("dnd" in next || "dndUntil" in next) {
+      const until =
+        "dndUntil" in next
+          ? (next.dndUntil ?? null)
+          : this.tray.settings.dndUntil;
+      next.dnd =
+        (next.dnd ?? this.tray.settings.dnd) &&
+        (until === null || until > Date.now());
+      next.dndUntil = next.dnd ? until : null;
+    }
     this.tray.update(next);
     this.applyTheme();
-    // Every server page sets its own server to match the switch.
-    if ("dnd" in next) this.tellServers(IPC.stoopDnd, this.tray.settings.dnd);
+    if ("dnd" in next) {
+      // Every server page sets its own server to match the switch.
+      this.tellServers(IPC.stoopDnd, this.dnd);
+      this.armDndEnd();
+    }
     if ("notifications" in next || "dnd" in next)
       this.tellServers(IPC.stoopNotifications, this.bannersAllowed());
   }
 
   // The switch as it stands, for a page asking as it loads.
-  get dnd(): boolean {
-    return this.tray.settings.dnd;
+  get dnd(): DndSwitch {
+    const { dnd, dndUntil } = this.tray.settings;
+    const on = dnd && (dndUntil === null || dndUntil > Date.now());
+    return { on, until: on ? dndUntil : null };
+  }
+
+  // When the switch's end passes, banners come back. No server is told:
+  // each ends it on its own, and an "off" from here would clear one set
+  // since on another device. Armed again after sleep, which holds timers.
+  private armDndEnd() {
+    clearTimeout(this.dndTimer);
+    const { dnd, dndUntil } = this.tray.settings;
+    if (!dnd || dndUntil === null) return;
+    this.dndTimer = setTimeout(
+      () => {
+        this.tray.update({ dnd: false, dndUntil: null });
+        this.tellServers(IPC.stoopNotifications, this.bannersAllowed());
+      },
+      Math.max(0, dndUntil - Date.now()),
+    );
   }
 
   // Banners come through only with notifications on and do not disturb
   // off; the app holds them itself the moment either changes, before any
   // server has answered.
   private bannersAllowed(): boolean {
-    return this.tray.settings.notifications && !this.tray.settings.dnd;
+    return this.tray.settings.notifications && !this.dnd.on;
   }
 
   // One message to every server page that has one to receive it. The
@@ -726,7 +766,8 @@ export class MainWindow {
       keepRunning: this.tray.settings.keepRunning,
       launchAtLogin: this.tray.settings.launchAtLogin,
       theme: this.tray.settings.theme,
-      dnd: this.tray.settings.dnd,
+      dnd: this.dnd.on,
+      dndUntil: this.dnd.until,
       notifications: this.tray.settings.notifications,
       version: app.getVersion(),
       platform: process.platform,

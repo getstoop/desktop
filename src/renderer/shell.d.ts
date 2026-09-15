@@ -26,6 +26,7 @@ declare global {
         launchAtLogin?: boolean;
         theme?: ThemePreference;
         dnd?: boolean;
+        dndUntil?: number | null;
         notifications?: boolean;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;

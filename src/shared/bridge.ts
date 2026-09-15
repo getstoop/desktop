@@ -28,8 +28,8 @@ export interface StoopBridge {
   // holds. The page sets its own server to match: to on whenever this is
   // on, and to off only when the switch is turned off, never on load, so
   // opening the app can't clear do not disturb set from another device.
-  dnd: boolean;
-  onDnd(handler: (on: boolean) => void): () => void;
+  dnd: DndSwitch;
+  onDnd(handler: (dnd: DndSwitch) => void): () => void;
   // Bridge 3. Whether App settings is letting desktop banners through,
   // asked at the moment one would fire. A function because contextBridge
   // copies values across once, at load, and this one changes while the
@@ -187,6 +187,13 @@ export interface PickerSource {
   icon: string; // data URL, or empty
 }
 
+// The do not disturb switch as a server page gets it: on or off, and when
+// it ends (epoch ms, or null for never). One past its end is off.
+export interface DndSwitch {
+  on: boolean;
+  until: number | null;
+}
+
 // What the settings page shows, pulled from main on load and after a
 // change.
 export interface SettingsView {
@@ -194,6 +201,7 @@ export interface SettingsView {
   launchAtLogin: boolean;
   theme: ThemePreference;
   dnd: boolean;
+  dndUntil: number | null;
   notifications: boolean;
   version: string;
   platform: string;

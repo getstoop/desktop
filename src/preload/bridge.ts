@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 import {
   BRIDGE,
+  type DndSwitch,
   IPC,
   type ShellTheme,
   type ShortcutName,
@@ -50,9 +51,9 @@ const stoop: StoopBridge = {
   // Asked of main as the page loads rather than passed as an argument: a
   // view's arguments are fixed when it is made, and a page reloaded after
   // the switch moved would start from the old answer.
-  dnd: ipcRenderer.sendSync(IPC.getDnd) === true,
+  dnd: ipcRenderer.sendSync(IPC.getDnd) as DndSwitch,
   onDnd(handler) {
-    const listener = (_: unknown, on: boolean) => handler(on);
+    const listener = (_: unknown, dnd: DndSwitch) => handler(dnd);
     ipcRenderer.on(IPC.stoopDnd, listener);
     return () => ipcRenderer.removeListener(IPC.stoopDnd, listener);
   },

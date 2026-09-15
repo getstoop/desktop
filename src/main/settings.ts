@@ -20,6 +20,8 @@ export interface Settings {
   // Do not disturb for every server the app holds: each server stores its
   // own, and the app sets them all. While on, no banners come through.
   dnd: boolean;
+  // When do not disturb ends, in epoch ms, or null for never.
+  dndUntil: number | null;
   // Whether banners are allowed through at all, from any server.
   notifications: boolean;
 }
@@ -29,6 +31,7 @@ const DEFAULTS: Settings = {
   launchAtLogin: false,
   theme: DEFAULT_THEME,
   dnd: false,
+  dndUntil: null,
   notifications: true,
 };
 const file = () => join(app.getPath("userData"), "settings.json");
@@ -36,11 +39,15 @@ const file = () => join(app.getPath("userData"), "settings.json");
 export function loadSettings(): Settings {
   try {
     const raw = JSON.parse(readFileSync(file(), "utf8")) as Partial<Settings>;
+    const until = typeof raw.dndUntil === "number" ? raw.dndUntil : null;
+    // One that ended while the app was closed loads as off.
+    const dnd = raw.dnd === true && (until === null || until > Date.now());
     return {
       ...DEFAULTS,
       ...raw,
       theme: themePreference(raw.theme),
-      dnd: raw.dnd === true,
+      dnd,
+      dndUntil: dnd ? until : null,
     };
   } catch {
     return { ...DEFAULTS };
