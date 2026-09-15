@@ -76,25 +76,49 @@
       }
       #update:hover { opacity: 1; background: rgba(127, 127, 127, 0.18); }
       #update[hidden] { display: none; }
+      /* A square inset in the strip rather than a full-height slab: the
+         strip is 32px and this sits 4px clear of both edges, so the lit
+         background reads as a control with room around it. The window
+         buttons opposite are full height because that is the platform's
+         shape for them, not the app's. */
       #gear {
-        width: 28px;
-        height: 100%;
-        display: grid;
-        place-items: center;
+        width: 24px;
+        height: 24px;
+        /* Flex, and padding zeroed: a button carries 1px 6px of its own
+           by default, which with border-box shrinks the box the icon is
+           centred in and pushes it off. Chromium's anonymous button box
+           does not lay out as a grid reliably either. */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
         flex: 0 0 auto;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         background: none;
         color: inherit;
         font: inherit;
+        line-height: 0;
         opacity: 0.75;
       }
-      #gear:hover { opacity: 1; background: rgba(127, 127, 127, 0.25); }
-      #gear[aria-pressed="true"] {
+      /* Hover only while the strip still has the pointer. Losing the
+         window can leave :hover on whatever it was last over, and a lit
+         gear means "App settings is in front", not "the mouse passed
+         through here ten minutes ago". */
+      body:not(.pointer-gone) #gear:hover {
         opacity: 1;
         background: rgba(127, 127, 127, 0.25);
       }
-      #gear:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+      /* Open, not hovered. The two have to look like different kinds of
+         thing: hover is a grey wash that follows the pointer, this is the
+         accent, and it stays put because App settings is what is in
+         front. Same grey for both read as a hover that had got stuck. */
+      #gear[aria-pressed="true"] {
+        opacity: 1;
+        color: var(--accent, currentColor);
+        background: color-mix(in srgb, var(--accent, #888) 22%, transparent);
+      }
+      #gear:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
       #controls {
         display: flex;
         height: 100%;

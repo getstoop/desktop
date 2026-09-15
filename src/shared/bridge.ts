@@ -4,9 +4,13 @@
 
 import type { ThemePreference } from "./themes";
 
-export const BRIDGE = 2;
+export const BRIDGE = 3;
 
 export type ShortcutName = "pushToTalk";
+
+// Bridge 3. How this side names a status. Strings rather than the
+// realtime enum: the shell has no protos, and the page maps them.
+export type PresenceChoice = "online" | "away" | "dnd";
 
 export interface StoopBridge {
   bridge: number;
@@ -24,6 +28,17 @@ export interface StoopBridge {
   setVoice(report: VoiceReport | null): void;
   // Bridge 3. The strip or tray asks the page holding voice to act.
   onVoiceAction(handler: (action: VoiceAction) => void): () => void;
+  // Bridge 3. The status the app keeps for every server it holds: one
+  // choice, and Away decided from the computer rather than from whichever
+  // page happens to be in front. A page that is behind sees no input at
+  // all, so it cannot tell "gone" from "reading something else".
+  status: PresenceChoice;
+  onStatus(handler: (status: PresenceChoice) => void): () => void;
+  // Bridge 3. Whether App settings is letting desktop banners through,
+  // asked at the moment one would fire. A function because contextBridge
+  // copies values across once, at load, and this one changes while the
+  // page is open.
+  notificationsAllowed(): boolean;
 }
 
 export type VoiceKind =
@@ -90,6 +105,8 @@ export const IPC = {
   setBadge: "stoop:set-badge",
   shortcut: "stoop:shortcut",
   stoopTheme: "stoop:theme",
+  stoopStatus: "stoop:status",
+  stoopNotifications: "stoop:notifications",
   probe: "shell:probe",
   addServer: "shell:add-server",
   removeServer: "shell:remove-server",
@@ -115,6 +132,7 @@ export const IPC = {
   voicePanel: "shell:voice-panel",
   voicePanelAction: "shell:voice-panel-action",
   closeVoicePanel: "shell:close-voice-panel",
+  testNotification: "shell:test-notification",
 } as const;
 
 // One theme's tokens, the active row of shared/themes.ts: what the
@@ -175,6 +193,10 @@ export interface SettingsView {
   keepRunning: boolean;
   launchAtLogin: boolean;
   theme: ThemePreference;
+  // The status as chosen, not as reported: the settings page shows what
+  // the person picked, while idleness may be reporting Away on top of it.
+  status: PresenceChoice;
+  notifications: boolean;
   version: string;
   platform: string;
   // The server to go back to, by name, when there is one.
@@ -187,9 +209,12 @@ export interface ChromeState {
   name: string;
   // Another server has unread activity.
   dot: boolean;
-  // The theme's canvas, and text that reads on it.
+  // The theme's canvas, text that reads on it, and the accent a state is
+  // painted in — the strip has to tell "App settings is open" apart from
+  // "the pointer is here", and grey cannot do both.
   color: string;
   symbol: string;
+  accent: string;
   platform: "darwin" | "win32" | "linux" | string;
   // The front server speaks a newer bridge than this app: offer an update.
   newer: boolean;

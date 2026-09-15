@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("shell", {
   setSettings: (patch: unknown) =>
     ipcRenderer.invoke("shell:set-settings", patch),
   showPage: (page: string) => ipcRenderer.send("shell:show-page", page),
+  testNotification: () => ipcRenderer.send("shell:test-notification"),
   onPickerSources: (handler: (payload: unknown) => void) => {
     ipcRenderer.on("shell:picker-sources", (_event, payload) =>
       handler(payload),

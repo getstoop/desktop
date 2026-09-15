@@ -16,6 +16,7 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "biome check src",
+    "check:ids": "node scripts/check-ids.mjs",
     "format": "biome format --write src",
     "package": "electron-vite build && electron-builder --publish never",
     "package:dir": "electron-vite build && electron-builder --dir"

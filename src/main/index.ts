@@ -112,6 +112,7 @@ function start() {
     if (page === "back") main?.back();
     else if (page === "add" || page === "settings") main?.showPage(page);
   });
+  ipcMain.on(IPC.testNotification, () => main?.testNotification());
   // Until the app updates itself (Desktop 10), the hint opens the
   // releases page.
   ipcMain.on(IPC.updateApp, () => {
@@ -158,5 +159,8 @@ function settingsPatch(raw: unknown): Partial<Settings> {
   if (typeof p.launchAtLogin === "boolean") out.launchAtLogin = p.launchAtLogin;
   if (p.theme && typeof p.theme === "object")
     out.theme = p.theme as Settings["theme"];
+  if (p.status === "online" || p.status === "away" || p.status === "dnd")
+    out.status = p.status;
+  if (typeof p.notifications === "boolean") out.notifications = p.notifications;
   return out;
 }

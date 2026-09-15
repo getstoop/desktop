@@ -1,4 +1,8 @@
-import type { Palette, SettingsView } from "../../shared/bridge";
+import type {
+  Palette,
+  PresenceChoice,
+  SettingsView,
+} from "../../shared/bridge";
 import {
   cssTokens,
   matchesFilter,
@@ -31,6 +35,14 @@ const followSystem = document.getElementById(
   "followSystem",
 ) as HTMLInputElement;
 const systemHint = document.getElementById("systemHint") as HTMLSpanElement;
+const statusOptions = document.getElementById(
+  "statusOptions",
+) as HTMLDivElement;
+// Not "notifications": the section around it already owns that id, and
+// getElementById would hand back the section, whose .checked is nothing.
+const desktopNotifications = document.getElementById(
+  "desktopNotifications",
+) as HTMLInputElement;
 
 // One section at a time, chosen from the column, as the web app's
 // settings frame does.
@@ -56,6 +68,8 @@ function render(view: SettingsView) {
   backLabel.textContent = view.front ? `Back to ${view.front}` : "Back";
   launchAtLogin.checked = view.launchAtLogin;
   keepRunning.checked = view.keepRunning;
+  desktopNotifications.checked = view.notifications;
+  renderStatus(view.status);
   version.textContent = view.version;
   pref = view.theme;
   renderThemes(view.theme);
@@ -101,6 +115,51 @@ function render(view: SettingsView) {
     serverList.append(row);
   }
 }
+
+// ---- notifications ----
+
+// The web app's own status control, redrawn here: three choices, the
+// picked one ringed, each with the dot its server pages draw. What is
+// shown is the choice, not what the servers were told — ten idle minutes
+// report Away on top of it without unpicking Online.
+const STATUSES: { value: PresenceChoice; label: string }[] = [
+  { value: "online", label: "Online" },
+  { value: "away", label: "Away" },
+  { value: "dnd", label: "Do not disturb" },
+];
+
+function renderStatus(status: PresenceChoice) {
+  statusOptions.replaceChildren();
+  for (const option of STATUSES) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "status-option";
+    button.setAttribute("role", "radio");
+    const on = option.value === status;
+    button.setAttribute("aria-checked", String(on));
+    if (on) button.classList.add("active");
+    const dot = document.createElement("span");
+    dot.className = `online-dot ${option.value}`;
+    const label = document.createElement("span");
+    label.textContent = option.label;
+    button.append(dot, label);
+    button.addEventListener("click", async () => {
+      render(await window.shell.setSettings({ status: option.value }));
+    });
+    statusOptions.append(button);
+  }
+}
+
+desktopNotifications.addEventListener("change", async () => {
+  render(
+    await window.shell.setSettings({
+      notifications: desktopNotifications.checked,
+    }),
+  );
+});
+(
+  document.getElementById("testNotification") as HTMLButtonElement
+).addEventListener("click", () => window.shell.testNotification());
 
 // ---- appearance ----
 
