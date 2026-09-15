@@ -64,6 +64,6 @@ export function trayVoiceItems(
     items.push({ label: "Turn camera off", click: () => act("camera-off") });
   if (report.mic)
     items.push({ label: "Mute microphone", click: () => act("mute") });
-  items.push({ label: "Show channel", click: () => act("open") });
+  items.push({ label: "Show channel", click: () => act("show") });
   return items;
 }

@@ -100,6 +100,8 @@ export class MainWindow {
   // The theme the app wears now, resolved from the preference.
   private theme: ThemeId;
   private switcher: Switcher;
+  // The live indicator's popover, over whichever server is in front.
+  private voicePanel: Switcher<ChromeVoice>;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
@@ -142,6 +144,13 @@ export class MainWindow {
       (view) => this.load(view, "switcher"),
       () => this.refocus(),
     );
+    this.voicePanel = new Switcher<ChromeVoice>(
+      this.win,
+      STRIP_HEIGHT,
+      (view) => this.load(view, "voice"),
+      () => this.refocus(),
+      IPC.voicePanel,
+    );
     this.chrome = this.shellView("chrome");
     this.page = this.shellView("add");
     this.win.contentView.addChildView(this.chrome);
@@ -151,7 +160,10 @@ export class MainWindow {
       this.remember();
     });
     this.win.on("move", () => this.remember());
-    this.win.on("blur", () => this.switcher.hide(false));
+    this.win.on("blur", () => {
+      this.switcher.hide(false);
+      this.voicePanel.hide(false);
+    });
     this.win.on("focus", () => this.recheck(false));
     const poll = setInterval(() => this.recheck(true), GATE_POLL_MS);
     this.win.on("closed", () => clearInterval(poll));
@@ -166,6 +178,7 @@ export class MainWindow {
     this.win.on("closed", () => {
       unfollow();
       this.switcher.destroy();
+      this.voicePanel.destroy();
       this.tray.destroy();
     });
     if (this.state.maximized) this.win.maximize();
@@ -392,6 +405,7 @@ export class MainWindow {
     this.page.setBounds(body);
     for (const slot of this.slots.values()) slot.view.setBounds(body);
     this.switcher.layout();
+    this.voicePanel.layout();
   }
 
   // ---- what is in front ----
@@ -484,6 +498,10 @@ export class MainWindow {
     this.page.webContents.send(IPC.theme, palette);
     this.switcher.theme(palette);
     this.refreshSwitcher();
+    this.voicePanel.theme(palette);
+    // The popover follows the call: repainted as it changes, gone with it.
+    if (state.voice) this.voicePanel.update(state.voice);
+    else this.voicePanel.hide(false);
   }
 
   // ---- servers ----
@@ -577,7 +595,10 @@ export class MainWindow {
 
   toggleSwitcher() {
     if (this.switcher.open) this.switcher.hide();
-    else this.switcher.show(this.switcherView());
+    else {
+      this.voicePanel.hide(false);
+      this.switcher.show(this.switcherView());
+    }
   }
 
   closeSwitcher() {
@@ -717,14 +738,31 @@ export class MainWindow {
     return { kind, mic, camera, screen, channel, where: this.voiceWhere(slot) };
   }
 
+  // Acts on the call where it is. Only "show" switches servers.
   voiceAction(action: VoiceAction) {
     const slot = this.voiceSlot();
     if (!slot) return;
-    if (action === "open") {
+    if (action === "show") {
+      this.voicePanel.hide(false);
       this.reveal();
       this.show(slot.server.id);
     }
     slot.view.webContents.send(IPC.voiceAction, action);
+  }
+
+  toggleVoicePanel() {
+    if (this.voicePanel.open) {
+      this.voicePanel.hide();
+      return;
+    }
+    const voice = this.chromeVoice();
+    if (!voice) return;
+    this.switcher.hide(false);
+    this.voicePanel.show(voice);
+  }
+
+  closeVoicePanel() {
+    this.voicePanel.hide();
   }
 
   voiceTrayItems(): MenuItemConstructorOptions[] {

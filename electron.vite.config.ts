@@ -29,6 +29,7 @@ export default defineConfig({
           settings: resolve(__dirname, "src/renderer/settings/index.html"),
           picker: resolve(__dirname, "src/renderer/picker/index.html"),
           switcher: resolve(__dirname, "src/renderer/switcher/index.html"),
+          voice: resolve(__dirname, "src/renderer/voice/index.html"),
         },
       },
     },

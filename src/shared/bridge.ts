@@ -45,9 +45,25 @@ export interface VoiceReport {
   space: string;
 }
 
-// "open" brings the server holding voice forward and has its page show
-// the popover under the strip.
-export type VoiceAction = "open" | "mute" | "camera-off" | "stop-screen";
+// What the strip, the voice popover and the tray ask of the page holding
+// voice. Each is a state, not a toggle. "show" brings that server forward
+// and has its page open the channel; nothing else switches servers.
+export type VoiceAction =
+  | "show"
+  | "mute"
+  | "unmute"
+  | "camera-on"
+  | "camera-off"
+  | "stop-screen";
+
+export const VOICE_ACTIONS: readonly VoiceAction[] = [
+  "show",
+  "mute",
+  "unmute",
+  "camera-on",
+  "camera-off",
+  "stop-screen",
+];
 
 // The indicator as the strip draws it: the report, and where to say it is.
 export interface ChromeVoice {
@@ -96,6 +112,9 @@ export const IPC = {
   setVoice: "stoop:set-voice",
   voiceAction: "stoop:voice-action",
   voiceClick: "shell:voice-click",
+  voicePanel: "shell:voice-panel",
+  voicePanelAction: "shell:voice-panel-action",
+  closeVoicePanel: "shell:close-voice-panel",
 } as const;
 
 // One theme's tokens, the active row of shared/themes.ts: what the

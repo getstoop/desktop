@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
-import { IPC, type Probe } from "../shared/bridge";
+import { IPC, type Probe, VOICE_ACTIONS } from "../shared/bridge";
 import { type DeepLink, linkFromArgv, parseDeepLink, SCHEME } from "./deeplink";
 import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
 import type { Settings } from "./settings";
@@ -55,11 +55,16 @@ function start() {
   ipcMain.on(IPC.setVoice, (event, report: unknown) =>
     main?.setVoice(event.sender.id, report),
   );
-  // From the strip: only the two actions it offers.
+  // From the strip: the pill opens the popover, its Stop stops sharing.
   ipcMain.on(IPC.voiceClick, (_event, action: string) => {
-    if (action === "open" || action === "stop-screen")
-      main?.voiceAction(action);
+    if (action === "open") main?.toggleVoicePanel();
+    else if (action === "stop-screen") main?.voiceAction(action);
   });
+  ipcMain.on(IPC.voicePanelAction, (_event, action: string) => {
+    const known = VOICE_ACTIONS.find((a) => a === action);
+    if (known) main?.voiceAction(known);
+  });
+  ipcMain.on(IPC.closeVoicePanel, () => main?.closeVoicePanel());
 
   // The add-server page: check first, add only when the person confirms
   // by pressing Open on a good answer.

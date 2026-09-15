@@ -1,4 +1,5 @@
 import type { ChromeState } from "../../shared/bridge";
+import { ALERT, CAMERA, MIC, SCREEN, SLASH, svg } from "../voiceIcons";
 
 const server = document.getElementById("server") as HTMLButtonElement;
 const name = document.getElementById("name") as HTMLSpanElement;
@@ -52,24 +53,26 @@ window.shell.onChromeState((state) => {
   drawVoice(state.voice);
 });
 
-// The same stroke icons as the web app's VoiceIcons, at the strip's size.
-const svg = (paths: string, off = false) =>
-  `<svg class="${off ? "off" : ""}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
-const MIC =
-  '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/>';
-const SLASH = '<path d="M4 4l16 16"/>';
-const CAMERA =
-  '<rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 10l5-3v10l-5-3"/>';
-const SCREEN =
-  '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>';
-const ALERT = '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>';
+// The pill moves once when a call starts, so people see there are controls
+// there; the ping ending is what clears it.
+let introducing = false;
+voice.addEventListener("animationend", (event) => {
+  if (event.animationName !== "voice-ping") return;
+  introducing = false;
+  voice.classList.remove("intro");
+});
 
 function drawVoice(v: ChromeState["voice"]) {
-  voice.hidden = !v;
-  if (!v) return;
-  voice.className = v.kind;
+  if (!v) {
+    voice.hidden = true;
+    introducing = false;
+    return;
+  }
+  if (voice.hidden) introducing = true;
+  voice.hidden = false;
+  voice.className = introducing ? `${v.kind} intro` : v.kind;
   voiceStop.hidden = v.kind !== "screen";
-  const mic = v.mic ? svg(MIC) : svg(MIC + SLASH, true);
+  const mic = v.mic ? svg(MIC) : svg(MIC + SLASH, 13, true);
   let text = v.where;
   let icons = mic;
   if (v.kind === "screen") {

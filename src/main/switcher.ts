@@ -9,10 +9,12 @@ import { IPC, type Palette, type SwitcherView } from "../shared/bridge";
 
 const shellPreload = join(__dirname, "../preload/shell.js");
 
-export class Switcher {
+// Also the voice popover (T = ChromeVoice): the same kind of panel, fed
+// on its own channel.
+export class Switcher<T = SwitcherView> {
   private view: WebContentsView | null = null;
   private loaded = false;
-  private pending: SwitcherView | null = null;
+  private pending: T | null = null;
   open = false;
 
   constructor(
@@ -22,10 +24,12 @@ export class Switcher {
     private load: (view: WebContentsView) => void,
     // Where the keyboard goes when the panel closes.
     private onClose: () => void,
+    // Where the panel's page hears what to draw.
+    private channel: string = IPC.switcherRows,
   ) {}
 
   // The strip button's left edge, so the panel lines up under it.
-  show(view: SwitcherView) {
+  show(view: T) {
     const panel = this.ensure();
     this.open = true;
     panel.setVisible(true);
@@ -46,7 +50,7 @@ export class Switcher {
   }
 
   // A newer list while the panel is up: repaint it in place.
-  update(view: SwitcherView) {
+  update(view: T) {
     if (this.open) this.draw(view);
   }
 
@@ -59,8 +63,8 @@ export class Switcher {
 
   // The panel is opened the moment its view is made, before the page is
   // there to hear anything; the first list waits for the load.
-  private draw(view: SwitcherView) {
-    if (this.loaded) this.view?.webContents.send(IPC.switcherRows, view);
+  private draw(view: T) {
+    if (this.loaded) this.view?.webContents.send(this.channel, view);
     else this.pending = view;
   }
 
@@ -106,7 +110,7 @@ export class Switcher {
     view.webContents.once("did-finish-load", () => {
       this.loaded = true;
       if (this.pending) {
-        view.webContents.send(IPC.switcherRows, this.pending);
+        view.webContents.send(this.channel, this.pending);
         this.pending = null;
       }
     });
