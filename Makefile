@@ -48,16 +48,22 @@ package-dir:
 ## attribute ours to and drops every one in silence. Ad-hoc signing is
 ## enough to get them delivered on this machine. It is NOT a substitute
 ## for signing a release (Desktop 11, 12), and it has to run again after
-## every package because the build replaces the bundle.
+## every package because the build replaces the bundle. Every bundle in
+## dist/ is signed: an old mac-arm64 build left beside a new mac-universal
+## one would otherwise be the one signed, and the app launched stays mute.
 sign-adhoc:
 	@test "$$(uname -s)" = Darwin || exit 0; \
-	app=$$(ls -d dist/mac*/Stoop.app 2>/dev/null | head -1); \
-	if [ -z "$$app" ]; then echo "make sign-adhoc: no Stoop.app in dist/, nothing to sign"; exit 0; fi; \
-	if codesign -dv "$$app" 2>&1 | grep -q "Authority="; then \
-	  echo "make sign-adhoc: $$app is properly signed; leaving it alone"; exit 0; \
-	fi; \
-	echo "make sign-adhoc: ad-hoc signing $$app so macOS will deliver its notifications"; \
-	codesign --force --deep --sign - --identifier com.getstoop.desktop "$$app"
+	found=0; \
+	for app in dist/mac*/Stoop.app; do \
+	  [ -d "$$app" ] || continue; \
+	  found=1; \
+	  if codesign -dv "$$app" 2>&1 | grep -q "Authority="; then \
+	    echo "make sign-adhoc: $$app is properly signed; leaving it alone"; continue; \
+	  fi; \
+	  echo "make sign-adhoc: ad-hoc signing $$app so macOS will deliver its notifications"; \
+	  codesign --force --deep --sign - --identifier com.getstoop.desktop "$$app"; \
+	done; \
+	[ "$$found" = 1 ] || echo "make sign-adhoc: no Stoop.app in dist/, nothing to sign"
 
 clean:
 	rm -rf out dist
