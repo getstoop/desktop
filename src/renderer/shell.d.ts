@@ -37,6 +37,7 @@ declare global {
       closeSwitcher(): void;
       onTheme(handler: (palette: Palette) => void): void;
       onChromeState(handler: (state: ChromeState) => void): void;
+      voiceAction(action: "open" | "stop-screen"): void;
     };
   }
 }

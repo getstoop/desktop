@@ -52,6 +52,14 @@ function start() {
   ipcMain.on(IPC.setBadge, (event, count: number) =>
     main?.setBadge(event.sender.id, count),
   );
+  ipcMain.on(IPC.setVoice, (event, report: unknown) =>
+    main?.setVoice(event.sender.id, report),
+  );
+  // From the strip: only the two actions it offers.
+  ipcMain.on(IPC.voiceClick, (_event, action: string) => {
+    if (action === "open" || action === "stop-screen")
+      main?.voiceAction(action);
+  });
 
   // The add-server page: check first, add only when the person confirms
   // by pressing Open on a good answer.

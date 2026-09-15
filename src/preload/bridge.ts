@@ -5,6 +5,7 @@ import {
   type ShellTheme,
   type ShortcutName,
   type StoopBridge,
+  type VoiceAction,
 } from "../shared/bridge";
 
 // Runs in every server page with contextIsolation on: the page sees only
@@ -28,6 +29,14 @@ const stoop: StoopBridge = {
     const listener = (_: unknown, theme: ShellTheme) => handler(theme);
     ipcRenderer.on(IPC.stoopTheme, listener);
     return () => ipcRenderer.removeListener(IPC.stoopTheme, listener);
+  },
+  setVoice(report) {
+    ipcRenderer.send(IPC.setVoice, report);
+  },
+  onVoiceAction(handler) {
+    const listener = (_: unknown, action: VoiceAction) => handler(action);
+    ipcRenderer.on(IPC.voiceAction, listener);
+    return () => ipcRenderer.removeListener(IPC.voiceAction, listener);
   },
 };
 

@@ -38,4 +38,6 @@ contextBridge.exposeInMainWorld("shell", {
   onChromeState: (handler: (state: unknown) => void) => {
     ipcRenderer.on("shell:chrome-state", (_event, state) => handler(state));
   },
+  voiceAction: (action: string) =>
+    ipcRenderer.send("shell:voice-click", action),
 });

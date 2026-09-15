@@ -18,6 +18,45 @@ export interface StoopBridge {
   // the tokens and hides its own picker.
   theme: ShellTheme;
   onTheme(handler: (theme: ShellTheme) => void): () => void;
+  // Bridge 3. What the page captures, drawn in the strip and the tray;
+  // null once out of voice. The page hides its own rail pill when this
+  // member exists.
+  setVoice(report: VoiceReport | null): void;
+  // Bridge 3. The strip or tray asks the page holding voice to act.
+  onVoiceAction(handler: (action: VoiceAction) => void): () => void;
+}
+
+export type VoiceKind =
+  | "joining"
+  | "error"
+  | "muted"
+  | "mic"
+  | "camera"
+  | "screen";
+
+// The page's capture state with the names already resolved: the shell
+// has no queries of its own. web/src/api/platform.ts declares the same.
+export interface VoiceReport {
+  kind: VoiceKind;
+  mic: boolean;
+  camera: boolean;
+  screen: boolean;
+  channel: string;
+  space: string;
+}
+
+// "open" brings the server holding voice forward and has its page show
+// the popover under the strip.
+export type VoiceAction = "open" | "mute" | "camera-off" | "stop-screen";
+
+// The indicator as the strip draws it: the report, and where to say it is.
+export interface ChromeVoice {
+  kind: VoiceKind;
+  mic: boolean;
+  camera: boolean;
+  screen: boolean;
+  channel: string;
+  where: string;
 }
 
 // The shape of a theme, as it crosses the bridge: no name, only what
@@ -54,6 +93,9 @@ export const IPC = {
   switcherRows: "shell:switcher-rows",
   chooseServer: "shell:choose-server",
   closeSwitcher: "shell:close-switcher",
+  setVoice: "stoop:set-voice",
+  voiceAction: "stoop:voice-action",
+  voiceClick: "shell:voice-click",
 } as const;
 
 // One theme's tokens, the active row of shared/themes.ts: what the
@@ -135,6 +177,11 @@ export interface ChromeState {
   // App settings is the page in front, so the strip's gear is lit and
   // clicking it goes back rather than opening what is already open.
   settings: boolean;
+  // Voice held by any server, drawn centred in the strip; null outside
+  // voice. ok and danger are the theme's, for its colours.
+  voice: ChromeVoice | null;
+  ok: string;
+  danger: string;
 }
 
 // The answer to "is this a Stoop server I can open?".
