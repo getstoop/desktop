@@ -79,6 +79,8 @@ interface Slot {
   pending?: string;
   // What the page says it captures; null outside voice.
   voice: VoiceReport | null;
+  // When its current call started, so the latest call speaks for the strip.
+  joinedAt: number;
 }
 
 // A loaded server is asked again this long after its last answer, when
@@ -86,6 +88,8 @@ interface Slot {
 // GATE_POLL_MS regardless, so the page clears as soon as it can.
 const RECHECK_MS = 5 * 60 * 1000;
 const GATE_POLL_MS = 30 * 1000;
+// How long the strip says what just happened out of sight.
+const NOTICE_MS = 4000;
 
 export class MainWindow {
   readonly win: BrowserWindow;
@@ -105,6 +109,9 @@ export class MainWindow {
   // The live indicator's popover, over whichever server is in front.
   private voicePanel: Switcher<ChromeVoice>;
   private status: StatusWatch;
+  // The strip's notice and the timer that clears it.
+  private notice = "";
+  private noticeTimer: ReturnType<typeof setTimeout> | undefined;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
@@ -295,6 +302,7 @@ export class MainWindow {
       newer: false,
       version: "",
       voice: null,
+      joinedAt: 0,
     };
     this.slots.set(server.id, slot);
     const wc = view.webContents;
@@ -539,6 +547,7 @@ export class MainWindow {
       voice: this.chromeVoice(),
       ok: palette.ok,
       danger: palette.danger,
+      notice: this.notice,
     };
     this.win.setBackgroundColor(palette.canvas);
     this.chrome.webContents.send(IPC.chromeState, state);
@@ -754,8 +763,38 @@ export class MainWindow {
   setVoice(webContentsId: number, raw: unknown) {
     const slot = this.serverFor(webContentsId);
     if (!slot) return;
+    const was = slot.voice;
     slot.voice = parseVoiceReport(raw);
+    if (!was && slot.voice) {
+      slot.joinedAt = Date.now();
+      this.leaveOthers(slot);
+    }
     this.voiceChanged();
+  }
+
+  // One call at a time across servers. Every join starts muted, so the new
+  // call is silent while the old one goes. A page too old for "leave" still
+  // takes the rest, and is quiet even if it stays connected.
+  private leaveOthers(joined: Slot) {
+    const left: string[] = [];
+    for (const other of this.slots.values()) {
+      if (other === joined || !other.voice) continue;
+      const wc = other.view.webContents;
+      if (wc.isDestroyed()) continue;
+      for (const action of ["mute", "camera-off", "stop-screen", "leave"])
+        wc.send(IPC.voiceAction, action);
+      left.push(other.server.name);
+    }
+    if (left.length) this.flashNotice(`Left voice on ${left.join(", ")}`);
+  }
+
+  private flashNotice(text: string) {
+    clearTimeout(this.noticeTimer);
+    this.notice = text;
+    this.noticeTimer = setTimeout(() => {
+      this.notice = "";
+      if (!this.win.isDestroyed()) this.pushChrome();
+    }, NOTICE_MS);
   }
 
   private voiceChanged() {
@@ -763,11 +802,14 @@ export class MainWindow {
     this.tray.refresh();
   }
 
-  // The server whose page holds voice. Two at once is what STOOP-255
-  // prevents; until then the first found speaks for the strip.
+  // The server whose page holds voice: the latest to join, because a page
+  // too old to leave when asked can still be holding a silenced call.
   private voiceSlot(): Slot | undefined {
-    for (const slot of this.slots.values()) if (slot.voice) return slot;
-    return undefined;
+    let latest: Slot | undefined;
+    for (const slot of this.slots.values())
+      if (slot.voice && (!latest || slot.joinedAt > latest.joinedAt))
+        latest = slot;
+    return latest;
   }
 
   // In front, the space names the call; behind, the server does, because

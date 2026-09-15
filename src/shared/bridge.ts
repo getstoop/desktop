@@ -63,13 +63,15 @@ export interface VoiceReport {
 // What the strip, the voice popover and the tray ask of the page holding
 // voice. Each is a state, not a toggle. "show" brings that server forward
 // and has its page open the channel; nothing else switches servers.
+// "leave" keeps one call at a time: voice started on another server.
 export type VoiceAction =
   | "show"
   | "mute"
   | "unmute"
   | "camera-on"
   | "camera-off"
-  | "stop-screen";
+  | "stop-screen"
+  | "leave";
 
 export const VOICE_ACTIONS: readonly VoiceAction[] = [
   "show",
@@ -78,6 +80,7 @@ export const VOICE_ACTIONS: readonly VoiceAction[] = [
   "camera-on",
   "camera-off",
   "stop-screen",
+  "leave",
 ];
 
 // The indicator as the strip draws it: the report, and where to say it is.
@@ -226,6 +229,9 @@ export interface ChromeState {
   voice: ChromeVoice | null;
   ok: string;
   danger: string;
+  // A few seconds of words after something happened out of sight, such
+  // as leaving voice on another server; empty otherwise.
+  notice: string;
 }
 
 // The answer to "is this a Stoop server I can open?".
