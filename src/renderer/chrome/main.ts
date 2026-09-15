@@ -12,6 +12,7 @@ const voiceOpen = document.getElementById("voice-open") as HTMLButtonElement;
 const voiceIcons = document.getElementById("voice-icons") as HTMLSpanElement;
 const where = document.getElementById("where") as HTMLSpanElement;
 const voiceStop = document.getElementById("voice-stop") as HTMLButtonElement;
+const notice = document.getElementById("notice") as HTMLSpanElement;
 update.addEventListener("click", () => window.shell.updateApp());
 voiceOpen.addEventListener("click", () => window.shell.voiceAction("open"));
 voiceStop.addEventListener("click", () =>
@@ -66,6 +67,8 @@ window.shell.onChromeState((state) => {
   document.body.style.setProperty("--ok", state.ok);
   document.body.style.setProperty("--danger", state.danger);
   drawVoice(state.voice);
+  notice.textContent = state.notice;
+  notice.hidden = !state.notice;
 });
 
 // The pill moves once when a call starts, so people see there are controls
