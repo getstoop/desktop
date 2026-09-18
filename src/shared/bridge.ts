@@ -4,7 +4,7 @@
 
 import type { ThemePreference } from "./themes";
 
-export const BRIDGE = 3;
+export const BRIDGE = 4;
 
 export type ShortcutName = "pushToTalk";
 
@@ -52,6 +52,8 @@ export interface VoiceReport {
   mic: boolean;
   camera: boolean;
   screen: boolean;
+  // Bridge 4. False from a page too old to say.
+  deafened: boolean;
   channel: string;
   space: string;
 }
@@ -64,6 +66,9 @@ export type VoiceAction =
   | "show"
   | "mute"
   | "unmute"
+  // Bridge 4.
+  | "deafen"
+  | "undeafen"
   | "camera-on"
   | "camera-off"
   | "stop-screen"
@@ -73,6 +78,8 @@ export const VOICE_ACTIONS: readonly VoiceAction[] = [
   "show",
   "mute",
   "unmute",
+  "deafen",
+  "undeafen",
   "camera-on",
   "camera-off",
   "stop-screen",

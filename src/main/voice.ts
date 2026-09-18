@@ -1,5 +1,6 @@
 import type { MenuItemConstructorOptions } from "electron";
 import type { VoiceAction, VoiceKind, VoiceReport } from "../shared/bridge";
+import { ACCELERATORS } from "./shortcuts";
 
 // The live indicator's shell side: what a server page says it captures,
 // checked on the way in, and the tray's words for it.
@@ -24,6 +25,7 @@ export function parseVoiceReport(raw: unknown): VoiceReport | null {
     mic: r.mic === true,
     camera: r.camera === true,
     screen: r.screen === true,
+    deafened: r.deafened === true,
     channel: typeof r.channel === "string" ? r.channel : "…",
     space: typeof r.space === "string" ? r.space : "…",
   };
@@ -66,4 +68,26 @@ export function trayVoiceItems(
     items.push({ label: "Mute microphone", click: () => act("mute") });
   items.push({ label: "Show channel", click: () => act("show") });
   return items;
+}
+
+// The app menu's Voice items. Each asks for a state, read off the last
+// report; out of voice they are greyed and the keys do nothing.
+export function voiceMenuItems(
+  report: VoiceReport | null,
+  act: (action: VoiceAction) => void,
+): MenuItemConstructorOptions[] {
+  return [
+    {
+      label: report && !report.mic ? "Unmute" : "Mute",
+      accelerator: ACCELERATORS.toggleMute,
+      enabled: !!report,
+      click: () => act(report?.mic ? "mute" : "unmute"),
+    },
+    {
+      label: report?.deafened ? "Undeafen" : "Deafen",
+      accelerator: ACCELERATORS.toggleDeafen,
+      enabled: !!report,
+      click: () => act(report?.deafened ? "undeafen" : "deafen"),
+    },
+  ];
 }
