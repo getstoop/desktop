@@ -3,9 +3,11 @@ import {
   BrowserWindow,
   type DesktopCapturerSource,
   desktopCapturer,
+  dialog,
   ipcMain,
   type Session,
   type Streams,
+  shell,
   systemPreferences,
 } from "electron";
 import { IPC, type Palette, type PickerSource } from "../shared/bridge";
@@ -13,14 +15,12 @@ import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 // getDisplayMedia in a page fails until the main process answers it;
 // there is no built-in picker, so the shell opens one of its own:
 // screens and windows with thumbnails, and system audio where the
-// platform can capture it.
+// platform can capture it. Every platform gets the same picker.
 //
 // macOS 15 and later has a system picker, and Electron will use it when
-// asked, but it hands back no audio track (electron/electron#44685). Our
-// own picker gets one, at the price of a Screen Recording grant that the
-// system picker does not need: desktopCapturer lists nothing without it.
-// So on macOS the grant decides which picker answers, and system audio
-// follows the grant.
+// asked, but it hands back no audio track (electron/electron#44685), so
+// it is never asked. Our own picker gets one, at the price of a Screen
+// Recording grant: desktopCapturer lists nothing without it.
 //
 // On a Wayland desktop the portal has already asked the person what to
 // share by the time getSources answers, so its single answer is used
@@ -28,15 +28,36 @@ import { IPC, type Palette, type PickerSource } from "../shared/bridge";
 
 const shellPreload = join(__dirname, "../preload/shell.js");
 
-// Whether desktopCapturer can see anything. Asking is what raises the
-// macOS prompt, so an undecided Mac still goes to our picker: that first
-// share fails, the person grants, and the next one works. Only a refusal
-// sends us back to the system picker. macOS decides this per responsible
-// process, so a dev run is charged to the terminal.
-export function canPickOurselves(): boolean {
-  if (process.platform !== "darwin") return true;
+const screenRecordingSettings =
+  "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
+
+// Whether macOS has refused us the screen. An undecided Mac is not a
+// refusal: asking desktopCapturer is what raises the prompt, so that
+// first share fails, the person grants, and the next one works. macOS
+// decides this per responsible process, so a dev run is charged to the
+// terminal.
+function screenRefused(): boolean {
+  if (process.platform !== "darwin") return false;
   const status = systemPreferences.getMediaAccessStatus("screen");
-  return status !== "denied" && status !== "restricted";
+  return status === "denied" || status === "restricted";
+}
+
+// A refused Mac would otherwise fail the share without a word; say why
+// and offer the way to the switch.
+async function explainRefusal(parent: BrowserWindow | null) {
+  const options: Electron.MessageBoxOptions = {
+    type: "info",
+    message: "Stoop needs permission to share your screen",
+    detail:
+      "Turn on Stoop under Screen & System Audio Recording in System Settings, then share again.",
+    buttons: ["Open System Settings", "Not Now"],
+    defaultId: 0,
+    cancelId: 1,
+  };
+  const { response } = parent
+    ? await dialog.showMessageBox(parent, options)
+    : await dialog.showMessageBox(options);
+  if (response === 0) void shell.openExternal(screenRecordingSettings);
 }
 
 // Electron reads null as "the person said no". An empty object instead
@@ -51,14 +72,16 @@ export function answerScreenShare(
   parent: () => BrowserWindow | null,
   palette: () => Palette,
 ) {
-  session.setDisplayMediaRequestHandler(
-    (_request, callback) => {
-      void pick(parent(), palette())
-        .then((chosen) => (chosen ? callback(chosen) : deny(callback)))
-        .catch(() => deny(callback));
-    },
-    { useSystemPicker: !canPickOurselves() },
-  );
+  session.setDisplayMediaRequestHandler((_request, callback) => {
+    if (screenRefused()) {
+      deny(callback);
+      void explainRefusal(parent());
+      return;
+    }
+    void pick(parent(), palette())
+      .then((chosen) => (chosen ? callback(chosen) : deny(callback)))
+      .catch(() => deny(callback));
+  });
 }
 
 async function pick(
@@ -72,7 +95,7 @@ async function pick(
   });
   if (sources.length === 0) return null;
   const wayland = process.platform === "linux" && !!process.env.WAYLAND_DISPLAY;
-  if (wayland || sources.length === 1) return streams(sources[0], false);
+  if (wayland) return streams(sources[0], false);
   const choice = await ask(parent, sources, palette);
   if (!choice) return null;
   const source = sources.find((s) => s.id === choice.id);
