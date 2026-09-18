@@ -34,11 +34,17 @@ import {
   saveServers,
 } from "./servers";
 import type { Settings } from "./settings";
+import { ACCELERATORS, serverAccelerator, serverHint } from "./shortcuts";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
 import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
-import { parseVoiceReport, trayVoiceItems, voiceLabel } from "./voice";
+import {
+  parseVoiceReport,
+  trayVoiceItems,
+  voiceLabel,
+  voiceMenuItems,
+} from "./voice";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -723,7 +729,7 @@ export class MainWindow {
         badge: slot?.badge ?? 0,
         state,
         current: server.id === this.front,
-        accelerator: i < 9 ? (mac ? `⌘${i + 1}` : `Ctrl+${i + 1}`) : "",
+        accelerator: serverHint(i, mac),
       };
     });
   }
@@ -840,6 +846,7 @@ export class MainWindow {
   private voiceChanged() {
     this.pushChrome();
     this.tray.refresh();
+    this.rebuildAppMenu();
   }
 
   // The server whose page holds voice: the latest to join, because a page
@@ -918,7 +925,7 @@ export class MainWindow {
         label: badge ? `${server.name}  (${badge})` : server.name,
         type: "radio",
         checked: server.id === this.front,
-        accelerator: i < 9 ? `CmdOrCtrl+${i + 1}` : undefined,
+        accelerator: serverAccelerator(i),
         click: () => this.show(server.id),
       };
     });
@@ -938,10 +945,16 @@ export class MainWindow {
           { label: "Add a server…", click: () => this.showPage("add") },
           {
             label: "App settings…",
-            accelerator: "CmdOrCtrl+,",
+            accelerator: ACCELERATORS.settings,
             click: () => this.showPage("settings"),
           },
         ],
+      },
+      {
+        label: "Voice",
+        submenu: voiceMenuItems(this.voiceSlot()?.voice ?? null, (action) =>
+          this.voiceAction(action),
+        ),
       },
       { role: "viewMenu" },
       { role: "windowMenu" },
