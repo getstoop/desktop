@@ -167,5 +167,6 @@ function settingsPatch(raw: unknown): Partial<Settings> {
   if (p.dndUntil === null || Number.isFinite(p.dndUntil))
     out.dndUntil = p.dndUntil as number | null;
   if (typeof p.notifications === "boolean") out.notifications = p.notifications;
+  if (typeof p.voiceCues === "boolean") out.voiceCues = p.voiceCues;
   return out;
 }

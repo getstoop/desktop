@@ -297,6 +297,7 @@ export class MainWindow {
           `--stoop-desktop-version=${app.getVersion()}`,
           `--stoop-theme=${encodeURIComponent(JSON.stringify(shellTheme(this.theme)))}`,
           `--stoop-notifications=${this.bannersAllowed()}`,
+          `--stoop-voice-cues=${this.tray.settings.voiceCues}`,
         ],
       },
     });
@@ -509,6 +510,12 @@ export class MainWindow {
     }
     if ("notifications" in next || "dnd" in next)
       this.tellServers(IPC.stoopNotifications, this.bannersAllowed());
+    if ("voiceCues" in next) {
+      // Every server page asks the app before a cue plays; the Voice
+      // menu's checkbox shows the same switch.
+      this.tellServers(IPC.stoopVoiceCues, this.tray.settings.voiceCues);
+      this.rebuildAppMenu();
+    }
   }
 
   // The switch as it stands, for a page asking as it loads.
@@ -777,6 +784,7 @@ export class MainWindow {
       dnd: this.dnd.on,
       dndUntil: this.dnd.until,
       notifications: this.tray.settings.notifications,
+      voiceCues: this.tray.settings.voiceCues,
       version: app.getVersion(),
       platform: process.platform,
       front: this.lastFront()?.name ?? null,
@@ -954,9 +962,20 @@ export class MainWindow {
       },
       {
         label: "Voice",
-        submenu: voiceMenuItems(this.voiceSlot()?.voice ?? null, (action) =>
-          this.voiceAction(action),
-        ),
+        submenu: [
+          ...voiceMenuItems(this.voiceSlot()?.voice ?? null, (action) =>
+            this.voiceAction(action),
+          ),
+          { type: "separator" },
+          // The App setting, mirrored where a call's other controls are,
+          // so it can be flipped mid-call without opening settings.
+          {
+            label: "Join and leave sounds",
+            type: "checkbox",
+            checked: this.tray.settings.voiceCues,
+            click: (item) => this.updateSettings({ voiceCues: item.checked }),
+          },
+        ],
       },
       { role: "viewMenu" },
       { role: "windowMenu" },

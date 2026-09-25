@@ -24,6 +24,10 @@ export interface Settings {
   dndUntil: number | null;
   // Whether banners are allowed through at all, from any server.
   notifications: boolean;
+  // A soft tone when someone joins or leaves the call you're in, on any
+  // server here. Off silences it on all of them; each page asks the app
+  // at the moment a cue would play.
+  voiceCues: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -33,6 +37,7 @@ const DEFAULTS: Settings = {
   dnd: false,
   dndUntil: null,
   notifications: true,
+  voiceCues: true,
 };
 const file = () => join(app.getPath("userData"), "settings.json");
 

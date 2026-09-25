@@ -28,6 +28,7 @@ declare global {
         dnd?: boolean;
         dndUntil?: number | null;
         notifications?: boolean;
+        voiceCues?: boolean;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
       testNotification(): void;
