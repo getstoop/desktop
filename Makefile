@@ -1,4 +1,4 @@
-.PHONY: dev dev-git-check lint build package package-dir sign-adhoc clean
+.PHONY: dev dev-git-check lint build brand package package-dir sign-adhoc clean
 
 ## dev: the shell with hot reload — the main process and the preload scripts
 ## rebuild and relaunch the app on change; its own pages hot-reload from a
@@ -26,6 +26,12 @@ lint:
 
 build:
 	pnpm build
+
+## brand: copy the icons and tray glyphs in from the server repo's
+## brand/dist/desktop (a sibling checkout by default; pass the path
+## otherwise). Run `make brand` there first when the mark changed.
+brand:
+	node scripts/brand-sync.mjs $(BRAND)
 
 ## package: an unsigned installer for this machine, into dist/
 package:

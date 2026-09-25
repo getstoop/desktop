@@ -75,7 +75,8 @@ src/renderer/   the app's own pages, one directory each:
                 add (a server), chrome (the title strip), gate (a server
                 that is too old, unreachable, or not Stoop)
 src/shared/     the bridge contract and IPC names, imported by both sides
-resources/      icons for electron-builder
+resources/      app icons for electron-builder and the tray glyphs; cut in
+                the server repo (brand/), copied here by `make brand`
 ```
 
 The design for these screens lives with the maintainer's proposal

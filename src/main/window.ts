@@ -39,6 +39,7 @@ import { loadWindowState, saveWindowState, type WindowState } from "./state";
 import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
+import { windowIcon } from "./trayIcon";
 import {
   parseVoiceReport,
   trayVoiceItems,
@@ -154,6 +155,7 @@ export class MainWindow {
       titleBarStyle: "hidden",
       trafficLightPosition: { x: 13, y: 10 },
       backgroundColor: this.palette().canvas,
+      icon: windowIcon(),
     });
     this.switcher = new Switcher(
       this.win,
