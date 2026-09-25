@@ -1,3 +1,4 @@
+<!-- biome-ignore-all lint/a11y/useAriaPropsForRole: each switch is a native checkbox, which exposes its own checked state; ARIA in HTML says not to add aria-checked to one -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -34,14 +35,14 @@
                 <span class="setting-title">Launch at login</span>
                 <span class="setting-desc">Open Stoop when you sign in to this computer.</span>
               </div>
-              <div class="setting-control"><input id="launchAtLogin" type="checkbox" /></div>
+              <div class="setting-control"><input id="launchAtLogin" type="checkbox" role="switch" class="switch" /></div>
             </div>
             <div class="setting-row">
               <div class="setting-text">
                 <span class="setting-title">Keep running when the window closes</span>
                 <span class="setting-desc">Closing the window leaves Stoop in the menu bar and voice keeps going. Quit from there.</span>
               </div>
-              <div class="setting-control"><input id="keepRunning" type="checkbox" /></div>
+              <div class="setting-control"><input id="keepRunning" type="checkbox" role="switch" class="switch" /></div>
             </div>
           </section>
 
@@ -71,14 +72,14 @@
                 <span class="setting-title">Desktop notifications</span>
                 <span class="setting-desc">A native banner when someone mentions you, whichever server it was. Off here means no banners from any of them.</span>
               </div>
-              <div class="setting-control"><input id="desktopNotifications" type="checkbox" /></div>
+              <div class="setting-control"><input id="desktopNotifications" type="checkbox" role="switch" class="switch" /></div>
             </div>
             <div class="setting-row">
               <div class="setting-text">
                 <span class="setting-title">Voice room sounds</span>
                 <span class="setting-desc">A soft tone when someone joins or leaves the call you're in, whichever server it's on. Off here silences it on all of them.</span>
               </div>
-              <div class="setting-control"><input id="voiceCues" type="checkbox" /></div>
+              <div class="setting-control"><input id="voiceCues" type="checkbox" role="switch" class="switch" /></div>
             </div>
             <div class="setting-row">
               <div class="setting-text">
@@ -100,7 +101,7 @@
             </fieldset>
             <div id="themeCards" class="theme-cards"></div>
             <label class="theme-system">
-              <input id="followSystem" type="checkbox" />
+              <input id="followSystem" type="checkbox" role="switch" class="switch" />
               <span>Follow the system's light/dark setting<span id="systemHint" class="hint"></span></span>
             </label>
           </section>

@@ -126,11 +126,6 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
-.setting-control input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
-}
 .server-list {
   display: flex;
   flex-direction: column;
@@ -354,14 +349,12 @@
 }
 .theme-system {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 8px;
   font-size: 13px;
 }
-.theme-system input {
-  width: auto;
+.theme-system .switch {
   margin: 0;
-  accent-color: var(--accent);
 }
 .theme-system .hint {
   color: var(--text-muted);
