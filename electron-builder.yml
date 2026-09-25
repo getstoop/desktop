@@ -31,6 +31,12 @@ win:
 linux:
   category: Network;Chat
   target: [AppImage, deb]
+  icon: icons
+  # The window icon: Linux takes it from BrowserWindow, not the bundle
+  # (window.ts), so one size ships beside the app.
+  extraResources:
+    - from: resources/icons/256x256.png
+      to: icon.png
   mimeTypes:
     - x-scheme-handler/stoop
 publish:
