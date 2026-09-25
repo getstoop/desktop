@@ -4,7 +4,7 @@
 
 import type { ThemePreference } from "./themes";
 
-export const BRIDGE = 4;
+export const BRIDGE = 5;
 
 export type ShortcutName = "pushToTalk";
 
@@ -35,6 +35,11 @@ export interface StoopBridge {
   // copies values across once, at load, and this one changes while the
   // page is open.
   notificationsAllowed(): boolean;
+  // Bridge 5. Whether App settings is letting the voice room cues play —
+  // the join and leave tones — asked at the moment one would. A function
+  // for the same reason as notificationsAllowed: contextBridge copies
+  // values once, at load, and the switch moves while a page is open.
+  voiceCuesAllowed(): boolean;
 }
 
 export type VoiceKind =
@@ -114,6 +119,7 @@ export const IPC = {
   stoopDnd: "stoop:dnd",
   getDnd: "stoop:get-dnd",
   stoopNotifications: "stoop:notifications",
+  stoopVoiceCues: "stoop:voice-cues",
   probe: "shell:probe",
   addServer: "shell:add-server",
   removeServer: "shell:remove-server",
@@ -210,6 +216,7 @@ export interface SettingsView {
   dnd: boolean;
   dndUntil: number | null;
   notifications: boolean;
+  voiceCues: boolean;
   version: string;
   platform: string;
   // The server to go back to, by name, when there is one.

@@ -37,6 +37,7 @@ const dndDuration = document.getElementById("dndDuration") as HTMLSelectElement;
 const desktopNotifications = document.getElementById(
   "desktopNotifications",
 ) as HTMLInputElement;
+const voiceCues = document.getElementById("voiceCues") as HTMLInputElement;
 
 // One section at a time, chosen from the column, as the web app's
 // settings frame does.
@@ -63,6 +64,7 @@ function render(view: SettingsView) {
   launchAtLogin.checked = view.launchAtLogin;
   keepRunning.checked = view.keepRunning;
   desktopNotifications.checked = view.notifications;
+  voiceCues.checked = view.voiceCues;
   renderDnd(view);
   version.textContent = view.version;
   pref = view.theme;
@@ -172,6 +174,9 @@ desktopNotifications.addEventListener("change", async () => {
       notifications: desktopNotifications.checked,
     }),
   );
+});
+voiceCues.addEventListener("change", async () => {
+  render(await window.shell.setSettings({ voiceCues: voiceCues.checked }));
 });
 (
   document.getElementById("testNotification") as HTMLButtonElement

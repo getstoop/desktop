@@ -17,6 +17,11 @@ let notificationsOn = fromArgs("--stoop-notifications=") !== "false";
 ipcRenderer.on(IPC.stoopNotifications, (_: unknown, on: boolean) => {
   notificationsOn = on;
 });
+// The voice room cues' switch, kept current the same way.
+let voiceCuesOn = fromArgs("--stoop-voice-cues=") !== "false";
+ipcRenderer.on(IPC.stoopVoiceCues, (_: unknown, on: boolean) => {
+  voiceCuesOn = on;
+});
 
 // Runs in every server page with contextIsolation on: the page sees only
 // this object, never Node or ipcRenderer.
@@ -58,6 +63,7 @@ const stoop: StoopBridge = {
     return () => ipcRenderer.removeListener(IPC.stoopDnd, listener);
   },
   notificationsAllowed: () => notificationsOn,
+  voiceCuesAllowed: () => voiceCuesOn,
 };
 
 contextBridge.exposeInMainWorld("stoop", stoop);
