@@ -1,0 +1,24 @@
+# Grouped minor and patch updates, one PR per ecosystem; a major version
+# arrives as its own PR so it can be judged on its own, which is how a
+# new Electron comes. Monthly for the code, weekly for the actions (each
+# PR builds an installer on all three platforms, so cadence is CI time).
+# Security updates are not on this schedule: they come when the advisory
+# does.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      app:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
