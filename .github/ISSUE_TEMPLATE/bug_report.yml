@@ -1,0 +1,56 @@
+name: Bug report
+description: Something the desktop app does wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is for the desktop app: the window, the title strip, the server list, App settings, the tray, `stoop://` links and the installers. If the same thing goes wrong in a browser, it belongs to the [server repository](https://github.com/getstoop/stoop/issues/new/choose).
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: From App settings → About, or the commit you built.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 26.1 on Apple silicon; Windows 11; Fedora 43, GNOME on Wayland
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How the app was installed
+      options:
+        - macOS .dmg
+        - Windows installer
+        - Linux AppImage
+        - Linux .deb
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server version
+      description: From Server admin → Server on the server you were using, if the problem involves one.
+      placeholder: v0.1.0
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got. Redact anything private, server addresses included.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.

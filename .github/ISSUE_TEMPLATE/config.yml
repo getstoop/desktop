@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Something wrong inside a server's page
+    url: https://github.com/getstoop/stoop/issues/new/choose
+    about: Messages, channels, voice and a server's own settings belong to the server repository.
+  - name: Self-hosting help
+    url: https://github.com/getstoop/stoop/blob/main/docs/self-hosting/README.md
+    about: Setup, exposure options and the troubleshooting table for running a server.
+  - name: Security report
+    url: https://github.com/getstoop/desktop/security/advisories/new
+    about: Vulnerabilities go through private reporting.
