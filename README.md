@@ -32,7 +32,9 @@ so the web app wears it too and hides its own picker. `src/shared/themes.ts`
 is the app's copy of the web app's themes; the shape of a theme (its
 tokens, no name) is the contract, so a theme only this side knows still
 renders. `pnpm package` builds an installer for this machine into
-`dist/`; CI builds all three platforms on every push.
+`dist/`; CI builds all three platforms on every push. A release is a
+`v*` tag, which attaches those installers to a draft release:
+[docs/releasing.md](docs/releasing.md).
 
 ## Deep links
 

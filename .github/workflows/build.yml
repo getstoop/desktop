@@ -28,13 +28,42 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm check:version
+
+  # A tag is a release (docs/releasing.md). It has to name the version
+  # in package.json, and the draft the installers attach to is made
+  # once, here: left to the package jobs, three of them would each look
+  # for the release at the same moment, find none, and make their own.
+  # The notes are docs/release-notes.md, which each release PR rewrites,
+  # with the list of merged pull requests generated below them.
+  release:
+    name: Draft release
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: node scripts/check-version.mjs "$GITHUB_REF_NAME"
+      - name: Create the draft
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "Stoop Desktop ${GITHUB_REF_NAME#v}" \
+            --notes-file docs/release-notes.md --generate-notes \
+            ${{ contains(github.ref_name, '-rc.') && '--prerelease' || '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Unsigned installers for every platform on every push; a tag also
-  # attaches them to a draft release, which stays a draft until someone
+  # attaches them to the draft release, which stays a draft until someone
   # publishes it. Signing (Desktop 11, 12) plugs into this job later.
   package:
     name: Package (${{ matrix.os }})
-    needs: check
+    needs: [check, release]
+    # `release` is skipped on everything but a tag, and a skipped need
+    # would skip this job with it.
+    if: ${{ !cancelled() && needs.check.result == 'success' && (needs.release.result == 'success' || needs.release.result == 'skipped') }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
