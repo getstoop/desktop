@@ -23,8 +23,8 @@
     "package:dir": "electron-vite build && electron-builder --dir"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.12",
-    "electron": "^44.2.0",
+    "@biomejs/biome": "^2.5.14",
+    "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "typescript": "^5.9.0",
