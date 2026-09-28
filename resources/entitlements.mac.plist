@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- What the hardened runtime has to let through, for the app and for
+         every helper inside it. V8 writes the code it runs. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <!-- Voice. Under the hardened runtime a missing one of these is not a
+         prompt the user can answer: the device opens and delivers silence,
+         or a black frame. Screen capture and the system audio tap need no
+         entitlement; those are the user's grant alone. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <key>com.apple.security.device.camera</key>
+    <true/>
+  </dict>
+</plist>
