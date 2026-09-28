@@ -88,9 +88,13 @@ jobs:
         run: pnpm exec electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Kept two weeks, not the ninety days a repository defaults to:
+      # these are for trying a branch, and every push leaves three more.
+      # What is meant to last is a release, which carries its own.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: stoop-${{ matrix.os }}
+          retention-days: 14
           path: |
             dist/*.dmg
             dist/*.exe
