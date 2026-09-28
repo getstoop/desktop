@@ -23,6 +23,7 @@ lint:
 	pnpm lint
 	pnpm typecheck
 	pnpm check:ids
+	pnpm check:version
 
 build:
 	pnpm build
