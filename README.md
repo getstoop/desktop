@@ -4,8 +4,34 @@ A thin Electron shell around [Stoop](https://github.com/getstoop/stoop).
 It loads the web app each server already serves, so there is nothing here
 to keep in step with the server: one new endpoint on the server side
 (`GET /version`) and one small object the shell injects into the page
-(`window.stoop`). The design is `docs/proposals/desktop-client.md` in the
-server repository; the contract is `docs/architecture/desktop.md` there.
+(`window.stoop`). The contract between the two is
+[docs/architecture/desktop.md](https://github.com/getstoop/stoop/blob/main/docs/architecture/desktop.md)
+in the server repository.
+
+## Builds are unsigned
+
+There is no release yet. CI builds an installer for macOS, Windows and
+Linux on every push, and none of them is signed or notarized, so each
+system warns before it opens one:
+
+- **macOS** refuses the app on first open. Open it once, then allow it
+  under System Settings → Privacy & Security → Open Anyway. An unsigned
+  build may also show no notifications: macOS attributes a banner to a
+  signed identifier and drops the ones it cannot attribute.
+- **Windows** shows SmartScreen's "Windows protected your PC". More info
+  → Run anyway.
+- **Linux** packages carry no signature. An AppImage has to be made
+  executable before it runs (`chmod +x`).
+
+Only get past these warnings for a build you made yourself or took from
+this repository. Signing for macOS comes first and Windows after it;
+this section goes when they land.
+
+## Who is responsible
+
+The project hosts no servers and sees nothing that passes through one.
+Whoever runs a server answers for what happens on it, and whoever uses
+the app answers for what they do with it.
 
 ## Run it
 
@@ -79,9 +105,14 @@ resources/      app icons for electron-builder and the tray glyphs; cut in
                 the server repo (brand/), copied here by `make brand`
 ```
 
-The design for these screens lives with the maintainer's proposal
-canvas; `docs/proposals/desktop-client.md` in the server repository is
-the text.
-
 Every renderer runs with `contextIsolation`, `sandbox` and no Node
 integration; a server page sees `window.stoop` and nothing else.
+
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) says how. Security problems go
+through private reporting, not issues: [SECURITY.md](SECURITY.md).
+
+## License
+
+[Apache-2.0](LICENSE)

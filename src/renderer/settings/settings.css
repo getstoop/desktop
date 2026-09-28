@@ -1,4 +1,4 @@
-/* The web app's settings frame (docs/proposals/settings-layout.md):
+/* The web app's settings frame (docs/architecture/web.md in the server repo):
    a nav column in the sidebar's slot and a content column beside it. */
 .settings-page {
   display: flex;
