@@ -1,7 +1,7 @@
 # Releasing Stoop for the desktop
 
 A release is a tag: a minor on `main`, a patch on a `release/X.Y` branch
-off the previous tag. Pushing it runs the Build workflow, which makes a
+off the previous tag. Pushing it runs the Release workflow, which makes a
 draft release and attaches an installer for every platform to it.
 Publishing the draft is the release. Nothing else publishes anything.
 
@@ -94,13 +94,17 @@ away.
 
 ## What the release path does not test
 
-CI builds the installers on every push, so packaging is exercised all
-the time. The steps that run only for a tag are not: the version check
-against the tag, making the draft, electron-builder attaching to it, and
-signing and notarizing the macOS build. After changing any of them in
-`.github/workflows/build.yml`, cut a release candidate before the
-release that matters. Signing alone can be tried without a tag: run the
-Build workflow by hand on `main`.
+The Build workflow makes the installers on every push, so packaging is
+exercised all the time. What only the Release workflow does is not: the
+version check against the tag, making the draft, electron-builder
+attaching to it, and signing and notarizing the macOS build. After
+changing any of them in `.github/workflows/release.yml`, cut a release
+candidate before the release that matters. Signing alone can be tried
+without a tag: run the Release workflow by hand on `main`, which leaves
+signed installers on the run and attaches them to nothing.
+
+The two workflows build the app the same way, in a package job each. A
+change to how it is built belongs in both.
 
 The installers are unsigned until signing lands (the README says what
 each system does about that), and the app does not update itself: a new

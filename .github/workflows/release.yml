@@ -1,0 +1,188 @@
+name: Release
+
+# What signs. A tag is a release (docs/releasing.md): it makes a draft and
+# attaches an installer for every platform to it. A run started by hand on
+# main is a rehearsal: the same installers, signed the same way, left on
+# the run and attached to nothing.
+#
+# The signing secrets are read here and nowhere else. Build, which runs on
+# every push and pull request, has none of them in reach.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Lint and typecheck
+    runs-on: ubuntu-latest
+    steps:
+      # What carries the certificate's name has been reviewed: a tag, or
+      # main. The button offers every branch, so say no here.
+      - name: Only a tag or main
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "::error::Release signs what it builds, so it runs for a tag or on main, not on $GITHUB_REF_NAME. Build makes an unsigned installer from any branch."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm check:version
+
+  # The tag has to name the version in package.json, and the draft the
+  # installers attach to is made once, here: left to the package jobs,
+  # three of them would each look for the release at the same moment, find
+  # none, and make their own. The notes are docs/release-notes.md, which
+  # each release PR rewrites, with the list of merged pull requests
+  # generated below them.
+  draft:
+    name: Draft release
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: node scripts/check-version.mjs "$GITHUB_REF_NAME"
+      - name: Create the draft
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "Stoop Desktop ${GITHUB_REF_NAME#v}" \
+            --notes-file docs/release-notes.md --generate-notes \
+            ${{ contains(github.ref_name, '-rc.') && '--prerelease' || '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build's package job with the signing around it; a change to how the
+  # app is built belongs in both. The macOS installer is signed and
+  # notarized. Windows' and Linux's are unsigned; Windows signing
+  # (STOOP-310) plugs in here the same way.
+  package:
+    name: Package (${{ matrix.os }})
+    needs: [check, draft]
+    # `draft` is skipped on everything but a tag, and a skipped need would
+    # skip this job with it.
+    if: ${{ !cancelled() && needs.check.result == 'success' && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
+    runs-on: ${{ matrix.os }}
+    # Notarization waits on Apple, minutes as a rule and hours when its
+    # queue is slow; the default would let the job sit for six.
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    permissions:
+      contents: write
+    env:
+      # Off, electron-builder signs with nothing, whatever a keychain
+      # holds, so it is on exactly where the certificate is handed over.
+      CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.os == 'macos-latest' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # After the install and the build, so no dependency's script runs with
+      # these in reach. The certificate is a Developer ID Application .p12,
+      # base64; the key is an App Store Connect API key, which
+      # electron-builder wants as a file.
+      #
+      # The certificate goes into a keychain made here and named in
+      # CSC_KEYCHAIN, not to electron-builder as CSC_LINK. Given a CSC_LINK
+      # it makes a keychain of its own under a random password and then
+      # hands `security set-key-partition-list` the certificate's password
+      # in its place. macOS let that pass on an unlocked keychain until 26,
+      # which checks it: "The user name or passphrase you entered is not
+      # correct", with both passwords right.
+      - name: Signing credentials (macOS)
+        if: ${{ matrix.os == 'macos-latest' }}
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          for name in MAC_CSC_LINK MAC_CSC_KEY_PASSWORD APPLE_API_KEY_P8 APPLE_API_KEY_ID APPLE_API_ISSUER; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::a release has to be signed, and these secrets are not set:$missing"
+            exit 1
+          fi
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+          certificate="$RUNNER_TEMP/certificate.p12"
+          printf '%s' "$MAC_CSC_LINK" | tr -d '[:space:]' | base64 --decode > "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" -P "$MAC_CSC_KEY_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productbuild
+          rm "$certificate"
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$keychain_password" "$keychain" > /dev/null
+          # codesign looks an identity up through the search list.
+          security list-keychains -d user -s "$keychain" \
+            $(security list-keychains -d user | tr -d '"')
+          if ! security find-identity -v -p codesigning "$keychain" | grep -q "Developer ID Application:"; then
+            echo "::error::MAC_CSC_LINK holds no Developer ID Application identity macOS takes as valid"
+            exit 1
+          fi
+          key="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY_ID.p8"
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$key"
+          {
+            echo "CSC_KEYCHAIN=$keychain"
+            echo "APPLE_API_KEY=$key"
+            echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID"
+            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
+          } >> "$GITHUB_ENV"
+      - if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: pnpm exec electron-builder --publish never
+      - if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: pnpm exec electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # electron-builder only warns when it cannot sign or notarize, so ask
+      # the bundle itself: a Developer ID signature that holds under the
+      # hardened runtime, and Apple's ticket stapled to it. A tag's draft
+      # release has its files by now; this going red is what says not to
+      # publish it.
+      - name: Verify signature and notarization (macOS)
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          app=dist/mac-universal/Stoop.app
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dvv "$app" 2>&1 | grep -q "^Authority=Developer ID Application:"
+          codesign -dvv "$app" 2>&1 | grep -q "flags=.*runtime"
+          xcrun stapler validate "$app"
+      # For a rehearsal, which attaches to nothing, and kept two weeks as
+      # Build's are. A release carries its own.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: stoop-${{ matrix.os }}
+          retention-days: 14
+          path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: error
