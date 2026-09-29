@@ -11,13 +11,13 @@ in the server repository.
 ## Which builds are signed
 
 There is no release yet. CI builds an installer for macOS, Windows and
-Linux on every push. The macOS one is signed; the others are not, and
-each system warns before it opens one of those:
+Linux on every push. A release's macOS installer is signed; nothing
+else is, and each system warns before it opens one of those:
 
-- **macOS**, built from `main` or for a release, is signed with a
-  Developer ID and notarized by Apple, and opens like any other app. A
-  build from a pull request is not signed, and macOS refuses it on first
-  open. Open it once, then allow it under System Settings → Privacy &
+- **macOS**, built for a release, is signed with a Developer ID and
+  notarized by Apple, and opens like any other app. A build from a push
+  or a pull request is not signed, and macOS refuses it on first open.
+  Open it once, then allow it under System Settings → Privacy &
   Security → Open Anyway. An unsigned build may also show no
   notifications: macOS attributes a banner to a signed identifier and
   drops the ones it cannot attribute.
