@@ -100,6 +100,7 @@ against the tag, making the draft, and electron-builder attaching to it.
 After changing any of them in `.github/workflows/build.yml`, cut a
 release candidate before the release that matters.
 
-The installers are unsigned until signing lands (the README says what
-each system does about that), and the app does not update itself: a new
-version is a new download.
+The macOS installer is signed and notarized, and a tag fails when the
+secrets for that are missing. The Windows and Linux ones are unsigned
+(the README says what each system does about that). The app does not
+update itself: a new version is a new download.

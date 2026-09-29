@@ -14,10 +14,10 @@ macOS. `stoop://` links open a server or finish a sign-in.
 **Needs a server running Stoop 0.1.0 or newer.** An older one gets a
 page that says so.
 
-**Installers are unsigned.** Each system warns before it opens one; the
-[README](https://github.com/getstoop/desktop/blob/v0.1.0/README.md#builds-are-unsigned)
-says what to expect and how to get past it. On macOS an unsigned build
-may show no notifications.
+**The macOS installer is signed and notarized; the Windows and Linux
+ones are unsigned.** Those two systems warn before they open one; the
+[README](https://github.com/getstoop/desktop/blob/v0.1.0/README.md#which-builds-are-signed)
+says what to expect and how to get past it.
 
 **Updates.** The app does not update itself yet. A new version is a new
 download from the releases page, which App settings → About links to.
