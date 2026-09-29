@@ -23,6 +23,21 @@ mac:
     NSAudioCaptureUsageDescription: >-
       Stoop records your computer's audio so a screen share can carry
       the sound you are hearing.
+    NSMicrophoneUsageDescription: >-
+      Stoop uses the microphone so the people in a voice channel can
+      hear you.
+    NSCameraUsageDescription: >-
+      Stoop uses the camera when you turn your video on in a voice
+      channel.
+  # Signing happens when a Developer ID Application certificate is there to
+  # sign with (the keychain here, CSC_LINK in CI) and is skipped when not;
+  # notarization likewise follows the APPLE_API_KEY* variables. The
+  # hardened runtime is electron-builder's default and notarization
+  # requires it. The helpers are given the app's entitlements rather than
+  # electron-builder's stock set, which has no microphone or camera in it
+  # and allows more than Electron has needed since 12.
+  entitlements: resources/entitlements.mac.plist
+  entitlementsInherit: resources/entitlements.mac.plist
   target:
     - target: dmg
       arch: [universal]
