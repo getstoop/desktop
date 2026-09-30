@@ -10,9 +10,10 @@ in the server repository.
 
 ## Which builds are signed
 
-There is no release yet. CI builds an installer for macOS, Windows and
-Linux on every push. A release's macOS installer is signed; nothing
-else is, and each system warns before it opens one of those:
+CI builds an installer for macOS, Windows and Linux on every push. A
+release's macOS and Windows installers are signed; its Linux packages
+and every build from a push or a pull request are not, and each system
+warns before it opens one of those:
 
 - **macOS**, built for a release, is signed with a Developer ID and
   notarized by Apple, and opens like any other app. A build from a push
@@ -21,14 +22,18 @@ else is, and each system warns before it opens one of those:
   Security → Open Anyway. An unsigned build may also show no
   notifications: macOS attributes a banner to a signed identifier and
   drops the ones it cannot attribute.
-- **Windows** shows SmartScreen's "Windows protected your PC". More info
-  → Run anyway.
+- **Windows**, built for a release, is signed by getstoop LLC through
+  Azure Artifact Signing, which is the publisher Windows shows for it.
+  SmartScreen may still say "Windows protected your PC" while the
+  certificate is new to it; More info → Run anyway, and the publisher
+  on that dialog is the check. A build from a push or a pull request is
+  not signed and shows the same with no publisher, as does the 0.1.0
+  installer, which came before the signing.
 - **Linux** packages carry no signature. An AppImage has to be made
   executable before it runs (`chmod +x`).
 
 Only get past these warnings for a build you made yourself or took from
-this repository. Signing for Windows is next; its entry here goes when
-that lands.
+this repository.
 
 ## Who is responsible
 
@@ -76,6 +81,14 @@ the Release workflow, which runs for a tag and when started by hand on
 Store Connect API key as `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`,
 `APPLE_API_ISSUER`. What the hardened runtime lets through is
 `resources/entitlements.mac.plist`.
+
+The Windows build is signed in CI only, through Azure Artifact Signing.
+The options are `electron-builder.windows-signing.yml` on top of the
+base file, which the Release workflow reads for Windows and Build does
+not, and the credentials are three more repository secrets for the app
+registration allowed to sign: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and
+`AZURE_CLIENT_SECRET`. A `pnpm package` on a Windows machine is
+unsigned.
 
 ## Updates
 
