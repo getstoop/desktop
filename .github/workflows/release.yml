@@ -42,6 +42,20 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm check:version
 
+  # Its own job, so what failed is plain from the name.
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
   # The tag has to name the version in package.json, and the draft the
   # installers attach to is made once, here: left to the package jobs,
   # three of them would each look for the release at the same moment, find
@@ -51,7 +65,7 @@ jobs:
   draft:
     name: Draft release
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    needs: check
+    needs: [check, test]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -73,10 +87,10 @@ jobs:
   # (STOOP-310) plugs in here the same way.
   package:
     name: Package (${{ matrix.os }})
-    needs: [check, draft]
+    needs: [check, test, draft]
     # `draft` is skipped on everything but a tag, and a skipped need would
     # skip this job with it.
-    if: ${{ !cancelled() && needs.check.result == 'success' && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
+    if: ${{ !cancelled() && needs.check.result == 'success' && needs.test.result == 'success' && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
     runs-on: ${{ matrix.os }}
     # Notarization waits on Apple, minutes as a rule and hours when its
     # queue is slow; the default would let the job sit for six.
