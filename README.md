@@ -77,6 +77,22 @@ Store Connect API key as `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`,
 `APPLE_API_ISSUER`. What the hardened runtime lets through is
 `resources/entitlements.mac.plist`.
 
+## Updates
+
+An installed app keeps itself current from the
+[releases](https://github.com/getstoop/desktop/releases). It checks
+soon after it starts and every four hours, downloads a new version in
+the background, and offers a restart in the title strip, the tray and
+App settings → About, which also has a Check now. Nothing is forced:
+the download installs when the app next quits either way. A check sends
+GitHub the request and nothing else — no account, no identifier. A
+build run from a checkout (`make dev`) does not update itself, and an
+unsigned macOS build (`make package` without a certificate) finds a
+release and cannot install it, which About says. On Linux the AppImage
+replaces itself; the `.deb` installs through `pkexec`, which asks for
+your password. How a release is made so that this works is in
+[docs/releasing.md](docs/releasing.md#updates).
+
 ## Deep links
 
 ```
@@ -112,6 +128,7 @@ src/main/       the Electron main process
   probe.ts        GET /version: is it Stoop, which version, what name
   deeplink.ts     stoop:// links: what one may say, and where it may go
   screenshare.ts  answers getDisplayMedia
+  updates.ts      the app updating itself from the releases
 src/preload/    bridge.ts → window.stoop for server pages
                 shell.ts  → window.shell for the app's own pages
 src/renderer/   the app's own pages, one directory each:

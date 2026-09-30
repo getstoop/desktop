@@ -17,6 +17,11 @@ contextBridge.exposeInMainWorld("shell", {
     ipcRenderer.invoke("shell:set-settings", patch),
   showPage: (page: string) => ipcRenderer.send("shell:show-page", page),
   testNotification: () => ipcRenderer.send("shell:test-notification"),
+  checkForUpdates: () => ipcRenderer.invoke("shell:check-for-updates"),
+  installUpdate: () => ipcRenderer.send("shell:install-update"),
+  onUpdateState: (handler: (state: unknown) => void) => {
+    ipcRenderer.on("shell:update-state", (_event, state) => handler(state));
+  },
   onPickerSources: (handler: (payload: unknown) => void) => {
     ipcRenderer.on("shell:picker-sources", (_event, payload) =>
       handler(payload),

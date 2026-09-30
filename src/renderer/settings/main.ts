@@ -1,4 +1,9 @@
-import type { Palette, SettingsView } from "../../shared/bridge";
+import {
+  type Palette,
+  RELEASES_URL,
+  type SettingsView,
+  type UpdateState,
+} from "../../shared/bridge";
 import {
   cssTokens,
   matchesFilter,
@@ -11,6 +16,7 @@ import {
   type ThemePreference,
 } from "../../shared/themes";
 import { followTheme } from "../theme";
+import { updateLine } from "./update";
 
 followTheme();
 
@@ -38,17 +44,27 @@ const desktopNotifications = document.getElementById(
   "desktopNotifications",
 ) as HTMLInputElement;
 const voiceCues = document.getElementById("voiceCues") as HTMLInputElement;
+const updateStatus = document.getElementById("updateStatus") as HTMLSpanElement;
+const updateAction = document.getElementById(
+  "updateAction",
+) as HTMLButtonElement;
 
 // One section at a time, chosen from the column, as the web app's
-// settings frame does.
+// settings frame does. The page can be opened on a section by name
+// (?section=about): the strip's update pill lands here.
 const links = document.querySelectorAll<HTMLButtonElement>(".nav-link");
 const sections = document.querySelectorAll<HTMLElement>(".section");
-for (const link of links) {
-  link.addEventListener("click", () => {
-    for (const l of links) l.classList.toggle("active", l === link);
-    for (const s of sections) s.hidden = s.id !== link.dataset.section;
-  });
+function select(section: string) {
+  for (const l of links)
+    l.classList.toggle("active", l.dataset.section === section);
+  for (const s of sections) s.hidden = s.id !== section;
 }
+for (const link of links) {
+  link.addEventListener("click", () => select(link.dataset.section ?? ""));
+}
+const wanted = new URLSearchParams(location.search).get("section");
+if (wanted && [...links].some((l) => l.dataset.section === wanted))
+  select(wanted);
 (document.getElementById("back") as HTMLButtonElement).addEventListener(
   "click",
   () => window.shell.showPage("back"),
@@ -67,6 +83,8 @@ function render(view: SettingsView) {
   voiceCues.checked = view.voiceCues;
   renderDnd(view);
   version.textContent = view.version;
+  deb = view.deb;
+  renderUpdate(view.update);
   pref = view.theme;
   renderThemes(view.theme);
   serverList.replaceChildren();
@@ -324,7 +342,29 @@ keepRunning.addEventListener("change", async () => {
 );
 (document.getElementById("releases") as HTMLButtonElement).addEventListener(
   "click",
-  () => window.shell.updateApp(),
+  () => window.shell.openExternal(RELEASES_URL),
 );
+
+// ---- about ----
+
+// Where the app stands with its next version (update.ts has the words).
+// Main pushes each change while the page is open, so a download counts
+// up here.
+let update: UpdateState = { kind: "off" };
+let deb = false;
+
+function renderUpdate(state: UpdateState) {
+  update = state;
+  const line = updateLine(state, deb, (ms) => endLabel(new Date(ms)));
+  updateStatus.textContent = line.text;
+  updateAction.hidden = line.action === null;
+  updateAction.textContent = line.action ?? "";
+}
+
+updateAction.addEventListener("click", async () => {
+  if (update.kind === "ready") window.shell.installUpdate();
+  else renderUpdate(await window.shell.checkForUpdates());
+});
+window.shell.onUpdateState((state) => renderUpdate(state));
 
 void load();

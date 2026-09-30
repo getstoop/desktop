@@ -5,9 +5,11 @@ import { type DeepLink, linkFromArgv, parseDeepLink, SCHEME } from "./deeplink";
 import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
 import type { Settings } from "./settings";
 import { markQuitting } from "./tray";
+import { Updates } from "./updates";
 import { MainWindow } from "./window";
 
 let main: MainWindow | null = null;
+let updates: Updates | null = null;
 // Links that arrived before `main` existed; drained at the end of start().
 const waiting: DeepLink[] = [];
 
@@ -45,9 +47,11 @@ if (!app.requestSingleInstanceLock()) {
 
 function start() {
   claimScheme();
-  main = new MainWindow();
+  updates = new Updates();
+  main = new MainWindow(updates);
   app.setLoginItemSettings({ openAtLogin: main.tray.settings.launchAtLogin });
   main.rebuildAppMenu();
+  updates.start();
 
   // A server page asking, as it loads, where the do not disturb switch is.
   ipcMain.on(IPC.getDnd, (event) => {
@@ -117,11 +121,21 @@ function start() {
     else if (page === "add" || page === "settings") main?.showPage(page);
   });
   ipcMain.on(IPC.testNotification, () => main?.testNotification());
-  // Until the app updates itself (Desktop 10), the hint opens the
-  // releases page.
+  // The strip's pill: a restart when a version is waiting on one, and
+  // otherwise — a server newer than this app — a look at About, with a
+  // check under way for it to show.
   ipcMain.on(IPC.updateApp, () => {
-    void shell.openExternal("https://github.com/getstoop/desktop/releases");
+    if (updates?.state.kind === "ready") updates.install();
+    else {
+      main?.showAbout();
+      void updates?.check();
+    }
   });
+  ipcMain.handle(IPC.checkForUpdates, async () => {
+    await updates?.check();
+    return updates?.state ?? { kind: "off" };
+  });
+  ipcMain.on(IPC.installUpdate, () => updates?.install());
   ipcMain.on(IPC.openExternal, (_event, url: string) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
   });
@@ -137,7 +151,8 @@ function start() {
   // The dock icon on macOS, or a second launch elsewhere: bring the
   // window back rather than open another.
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) main = new MainWindow();
+    if (BrowserWindow.getAllWindows().length === 0 && updates)
+      main = new MainWindow(updates);
     else main?.reveal();
   });
 
