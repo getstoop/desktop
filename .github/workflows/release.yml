@@ -157,10 +157,21 @@ jobs:
           # codesign looks an identity up through the search list.
           security list-keychains -d user -s "$keychain" \
             $(security list-keychains -d user | tr -d '"')
-          if ! security find-identity -v -p codesigning "$keychain" | grep -q "Developer ID Application:"; then
+          identity=$(security find-identity -v -p codesigning "$keychain" \
+            | grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"')
+          if [ -z "$identity" ]; then
             echo "::error::MAC_CSC_LINK holds no Developer ID Application identity macOS takes as valid"
             exit 1
           fi
+          # The log is public and the certificate is in a person's name
+          # until the membership is an organization's. Its common name is
+          # "Developer ID Application: <name> (<team id>)"; from here on
+          # the runner prints the name as asterisks wherever it appears,
+          # which is electron-builder's identityName line. The name is
+          # still in the signed app, for anyone who asks codesign.
+          name=${identity#Developer ID Application: }
+          name=${name% (*}
+          echo "::add-mask::$name"
           key="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY_ID.p8"
           printf '%s\n' "$APPLE_API_KEY_P8" > "$key"
           {
