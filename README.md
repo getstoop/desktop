@@ -66,11 +66,13 @@ The macOS build is signed when there is a Developer ID Application
 certificate to sign with and notarized when there are credentials to
 notarize with, and is plainly unsigned otherwise. On this machine that is
 the login keychain and a `notarytool` profile named in
-`APPLE_KEYCHAIN_PROFILE`. In CI it is five repository secrets, used on
-main and on a tag only, and a tag fails without them: `MAC_CSC_LINK` (the
-.p12, base64), `MAC_CSC_KEY_PASSWORD`, and an App Store Connect API key
-as `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`. What the
-hardened runtime lets through is `resources/entitlements.mac.plist`.
+`APPLE_KEYCHAIN_PROFILE`. In CI it is five repository secrets, used for
+the Release workflow, which runs for a tag and when started by hand on
+`main` (Actions → Release → Run workflow), and fails without them:
+`MAC_CSC_LINK` (the .p12, base64), `MAC_CSC_KEY_PASSWORD`, and an App
+Store Connect API key as `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`,
+`APPLE_API_ISSUER`. What the hardened runtime lets through is
+`resources/entitlements.mac.plist`.
 
 ## Deep links
 
