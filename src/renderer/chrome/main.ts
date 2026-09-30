@@ -1,5 +1,6 @@
 import type { ChromeState } from "../../shared/bridge";
 import { ALERT, CAMERA, MIC, SCREEN, SLASH, svg } from "../voiceIcons";
+import { updatePill } from "./pill";
 
 const server = document.getElementById("server") as HTMLButtonElement;
 const name = document.getElementById("name") as HTMLSpanElement;
@@ -58,7 +59,10 @@ window.shell.onChromeState((state) => {
   server.hidden = !state.name;
   name.textContent = state.name;
   dot.hidden = !state.dot;
-  update.hidden = !state.newer;
+  const pill = updatePill(state.update, state.newer);
+  update.hidden = pill.hidden;
+  update.textContent = pill.text;
+  update.title = pill.title;
   gear.setAttribute("aria-pressed", String(state.settings));
   const mac = state.platform === "darwin";
   gear.title = mac ? "App settings (⌘,)" : "App settings (Ctrl+,)";

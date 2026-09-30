@@ -146,7 +146,28 @@ export const IPC = {
   voicePanelAction: "shell:voice-panel-action",
   closeVoicePanel: "shell:close-voice-panel",
   testNotification: "shell:test-notification",
+  updateState: "shell:update-state",
+  checkForUpdates: "shell:check-for-updates",
+  installUpdate: "shell:install-update",
 } as const;
+
+// Where a new version is announced, for the pages that point there.
+export const RELEASES_URL = "https://github.com/getstoop/desktop/releases";
+
+// Where the app stands with its next version, as main/updates.ts keeps it
+// and About, the strip and the tray show it.
+export type UpdateState =
+  // A build run from a checkout: it does not update itself.
+  | { kind: "off" }
+  // Nothing known to be newer. checkedAt is when that was last confirmed,
+  // in epoch ms, or null before a check has answered.
+  | { kind: "idle"; checkedAt: number | null }
+  | { kind: "checking" }
+  | { kind: "downloading"; version: string; percent: number }
+  // Downloaded, and installs when the app next quits: a restart brings
+  // the new version up now.
+  | { kind: "ready"; version: string }
+  | { kind: "error"; detail: string };
 
 // One theme's tokens, the active row of shared/themes.ts: what the
 // shell's own pages paint with, and what a server page is handed.
@@ -219,6 +240,10 @@ export interface SettingsView {
   voiceCues: boolean;
   version: string;
   platform: string;
+  update: UpdateState;
+  // Installed from the .deb, so installing an update asks for the
+  // password.
+  deb: boolean;
   // The server to go back to, by name, when there is one.
   front: string | null;
   servers: { id: string; name: string; url: string; version: string }[];
@@ -238,6 +263,8 @@ export interface ChromeState {
   platform: "darwin" | "win32" | "linux" | string;
   // The front server speaks a newer bridge than this app: offer an update.
   newer: boolean;
+  // A new version downloaded and waiting on a restart, or null.
+  update: string | null;
   // App settings is the page in front, so the strip's gear is lit and
   // clicking it goes back rather than opening what is already open.
   settings: boolean;

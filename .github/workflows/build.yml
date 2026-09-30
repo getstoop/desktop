@@ -77,7 +77,9 @@ jobs:
           retention-days: 14
           path: |
             dist/*.dmg
+            dist/*.zip
             dist/*.exe
             dist/*.AppImage
             dist/*.deb
+            dist/latest*.yml
           if-no-files-found: error

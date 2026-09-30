@@ -38,8 +38,12 @@ mac:
   # and allows more than Electron has needed since 12.
   entitlements: resources/entitlements.mac.plist
   entitlementsInherit: resources/entitlements.mac.plist
+  # The dmg is what a person downloads; the zip is what the app's updater
+  # downloads (src/main/updates.ts), and latest-mac.yml names it.
   target:
     - target: dmg
+      arch: [universal]
+    - target: zip
       arch: [universal]
 win:
   target: nsis
@@ -54,6 +58,8 @@ linux:
       to: icon.png
   mimeTypes:
     - x-scheme-handler/stoop
+# Also what app-update.yml, packed beside the app, points the updater at:
+# the newest published release here. A draft is invisible to it.
 publish:
   provider: github
   owner: getstoop

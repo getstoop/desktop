@@ -7,6 +7,7 @@ import type {
   Probe,
   SettingsView,
   SwitcherView,
+  UpdateState,
   VoiceAction,
 } from "../shared/bridge";
 import type { ThemePreference } from "../shared/themes";
@@ -32,6 +33,11 @@ declare global {
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
       testNotification(): void;
+      // Resolves once the check has answered; a download it starts goes
+      // on, reported through onUpdateState.
+      checkForUpdates(): Promise<UpdateState>;
+      installUpdate(): void;
+      onUpdateState(handler: (state: UpdateState) => void): void;
       onPickerSources(
         handler: (payload: { sources: PickerSource[]; audio: boolean }) => void,
       ): void;

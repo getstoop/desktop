@@ -60,15 +60,20 @@ identifies such a build.
 4. **The workflow** checks the tag against `package.json`, makes a draft
    release headed by `docs/release-notes.md` with the PRs merged since
    the last tag listed below it, and builds the installers onto it: a
-   universal `.dmg`, a Windows installer, an AppImage and a `.deb`.
+   universal `.dmg` and `.zip`, a Windows installer, an AppImage and a
+   `.deb`, with `latest-mac.yml`, `latest.yml` and `latest-linux.yml`
+   beside them, which is what an installed app reads ([Updates](#updates)).
 5. **Verify against the draft.** Download each installer from the draft
    and install it on a clean machine. Add a server, sign in, join voice.
    Check that App settings → About shows the version. Install over the
    previous release and check that the server list and the settings
-   survived.
+   survived. Check that the three `latest*.yml` files and the macOS
+   `.zip` are on the draft: without them an installed app finds nothing,
+   and without the zip a Mac finds the release and cannot take it.
 6. **Publish the draft.** Read the notes as they came out, then
    publish. Anything wrong after that becomes a patch release; the tag
-   is never moved.
+   is never moved. Publishing is the moment every installed app sees
+   the release: each checks within hours and downloads it on its own.
 
 ## A patch release
 
@@ -108,5 +113,38 @@ change to how it is built belongs in both.
 
 The macOS installer is signed and notarized, and a tag fails when the
 secrets for that are missing. The Windows and Linux ones are unsigned
-(the README says what each system does about that). The app does not
-update itself: a new version is a new download.
+(the README says what each system does about that).
+
+## Updates
+
+An installed app updates itself from the releases here
+(`src/main/updates.ts`, on electron-updater). It asks GitHub for the
+newest published release soon after launch and every four hours, reads
+the `latest*.yml` for its platform, and downloads the new version in
+the background. Nothing is forced: the title strip, the tray and App
+settings → About offer a restart, and the download installs on the next
+quit either way. A release candidate reaches only apps already running
+one; an app on a release never takes an rc. A check sends GitHub the
+request and nothing else.
+
+What that asks of a release:
+
+- **The metadata and the zip.** electron-builder attaches
+  `latest-mac.yml`, `latest.yml`, `latest-linux.yml` and the macOS zip
+  with the installers; the verify step above checks they are there. A
+  release without them is one no installed app can find or take.
+- **A signed macOS build.** Squirrel refuses an update into an unsigned
+  app, and refuses an unsigned one. Both hold for a release; a `make
+  package` build on a laptop finds the release and fails to install it,
+  which About reports.
+- **A public repository, or a published release.** The updater reads the
+  release without credentials. It cannot see a draft.
+- **Windows verifies nothing yet.** Until the Windows build is signed
+  (STOOP-310), the downloaded installer is checked against the sha512 in
+  `latest.yml` and no further. Once it is signed, electron-builder
+  writes the publisher's name into the app and the updater refuses an
+  installer signed by anyone else.
+
+Changing the updater, or how the release attaches its files, is one of
+the things a release candidate is for: cut one, install it, publish a
+second, and watch the first take it.

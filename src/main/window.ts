@@ -40,6 +40,7 @@ import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
 import { windowIcon } from "./trayIcon";
+import type { Updates } from "./updates";
 import {
   parseVoiceReport,
   trayVoiceItems,
@@ -124,8 +125,9 @@ export class MainWindow {
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
 
-  constructor() {
+  constructor(private updates: Updates) {
     this.tray = new AppTray({
+      updateItems: () => this.updateTrayItems(),
       serverItems: () => this.serverMenuItems(),
       voiceItems: () => this.voiceTrayItems(),
       voiceTooltip: () => this.voiceTooltip(),
@@ -194,11 +196,13 @@ export class MainWindow {
       }
     });
     const unfollow = onSystemTheme(() => this.applyTheme());
+    const unwatch = this.updates.onChange(() => this.updateChanged());
     this.armDndEnd();
     const rearm = () => this.armDndEnd();
     powerMonitor.on("resume", rearm);
     this.win.on("closed", () => {
       unfollow();
+      unwatch();
       clearTimeout(this.dndTimer);
       powerMonitor.off("resume", rearm);
       this.switcher.destroy();
@@ -459,10 +463,10 @@ export class MainWindow {
     this.remember();
   }
 
-  showPage(page?: string) {
+  showPage(page?: string, query = "") {
     // The add page opened any other way is not the invitation.
     if (page === "add") this.invited = null;
-    if (page) this.load(this.page, page);
+    if (page) this.load(this.page, page, query);
     for (const s of this.slots.values()) s.view.setVisible(false);
     this.page.setVisible(true);
     this.switcher.hide();
@@ -474,6 +478,12 @@ export class MainWindow {
     // when the panel was never open.
     this.refocus();
     this.pushChrome();
+  }
+
+  // App settings, open on About: where the app says how it stands with
+  // its next version.
+  showAbout() {
+    this.showPage("settings", "?section=about");
   }
 
   // What the shell's own pages paint with: the active theme. A picker
@@ -597,6 +607,8 @@ export class MainWindow {
       accent: palette.accent,
       platform: process.platform,
       newer: slot?.newer ?? false,
+      update:
+        this.updates.state.kind === "ready" ? this.updates.state.version : null,
       settings: this.pageName === "settings",
       voice: this.chromeVoice(),
       ok: palette.ok,
@@ -787,6 +799,8 @@ export class MainWindow {
       voiceCues: this.tray.settings.voiceCues,
       version: app.getVersion(),
       platform: process.platform,
+      update: this.updates.state,
+      deb: this.updates.deb,
       front: this.lastFront()?.name ?? null,
       servers: this.servers.map((s) => ({
         id: s.id,
@@ -924,6 +938,30 @@ export class MainWindow {
   voiceTooltip(): string {
     const voice = this.voiceSlot()?.voice;
     return voice ? voiceLabel(voice.kind) : "";
+  }
+
+  // ---- updates ----
+
+  // The updater moved: the strip's pill and the tray's item follow, and
+  // the page view is told in case About is the page showing.
+  private updateChanged() {
+    this.pushChrome();
+    this.tray.refresh();
+    if (!this.page.webContents.isDestroyed())
+      this.page.webContents.send(IPC.updateState, this.updates.state);
+  }
+
+  // The tray's one line about an update: the restart, once there is a
+  // version to restart into.
+  updateTrayItems(): MenuItemConstructorOptions[] {
+    const state = this.updates.state;
+    if (state.kind !== "ready") return [];
+    return [
+      {
+        label: `Restart to update to Stoop ${state.version}`,
+        click: () => this.updates.install(),
+      },
+    ];
   }
 
   // ---- the menu ----

@@ -3,11 +3,13 @@ import { loadSettings, type Settings, saveSettings } from "./settings";
 import { trayIcon } from "./trayIcon";
 
 // The menu bar / tray icon: the unread total beside it, and a menu with
-// what voice is capturing, the servers, the two app settings that have no
-// other home yet, and Quit. What it lists comes from the window through
-// `source`.
+// an update waiting on a restart, what voice is capturing, the servers,
+// the two app settings that have no other home yet, and Quit. What it
+// lists comes from the window through `source`.
 
 export interface TraySource {
+  // The restart into a downloaded update, or none.
+  updateItems(): MenuItemConstructorOptions[];
   serverItems(): MenuItemConstructorOptions[];
   // Voice's live items, or none outside voice.
   voiceItems(): MenuItemConstructorOptions[];
@@ -39,7 +41,11 @@ export class AppTray {
     if (total) parts.push(`${total} unread`);
     this.tray.setToolTip(parts.filter(Boolean).join(" · "));
     const voice = this.source.voiceItems();
+    const update = this.source.updateItems();
     const items: MenuItemConstructorOptions[] = [
+      ...(update.length
+        ? [...update, { type: "separator" } as MenuItemConstructorOptions]
+        : []),
       ...(voice.length
         ? [...voice, { type: "separator" } as MenuItemConstructorOptions]
         : []),

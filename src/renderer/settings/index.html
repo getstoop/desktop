@@ -122,9 +122,12 @@
             <div class="setting-row">
               <div class="setting-text">
                 <span class="setting-title">Stoop Desktop <span id="version"></span></span>
-                <span class="setting-desc">Updates arrive as releases of the app. Checking and installing them from here comes later.</span>
+                <span id="updateStatus" class="setting-desc" role="status"></span>
               </div>
-              <div class="setting-control"><button id="releases" type="button" class="chip">Releases page</button></div>
+              <div class="setting-control">
+                <button id="updateAction" type="button" class="chip" hidden></button>
+                <button id="releases" type="button" class="chip">Releases</button>
+              </div>
             </div>
           </section>
         </div>

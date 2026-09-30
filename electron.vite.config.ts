@@ -1,8 +1,11 @@
 import { resolve } from "node:path";
-import { defineConfig } from "electron-vite";
+import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 
 export default defineConfig({
-  main: {},
+  // What package.json lists under dependencies (electron-updater) is
+  // required from node_modules at run time, which electron-builder ships,
+  // rather than bundled in here.
+  main: { plugins: [externalizeDepsPlugin()] },
   preload: {
     build: {
       rollupOptions: {

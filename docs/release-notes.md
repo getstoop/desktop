@@ -19,8 +19,12 @@ ones are unsigned.** Those two systems warn before they open one; the
 [README](https://github.com/getstoop/desktop/blob/v0.1.0/README.md#which-builds-are-signed)
 says what to expect and how to get past it.
 
-**Updates.** The app does not update itself yet. A new version is a new
-download from the releases page, which App settings → About links to.
+**Updates.** From this version on the app updates itself: it checks
+for a new release soon after it starts and every few hours, downloads
+one in the background, and offers a restart in the title strip, the
+tray and App settings → About. Nothing is forced; the download also
+installs when the app next quits. A check sends GitHub the request and
+nothing else. On Linux the `.deb` asks for your password to install.
 
 **Known issues:** none known at release. What turns up goes in
 [GitHub issues](https://github.com/getstoop/desktop/issues); security
