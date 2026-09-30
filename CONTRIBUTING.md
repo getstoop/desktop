@@ -27,8 +27,10 @@ rules below exist to keep it small.
 Getting a dev environment running is in the [README](README.md) (Run
 it), and the layout of the source is there too. In short:
 
-- `make lint` and `make build` from the repo root. `make lint` runs the
-  linter, the typecheck and the id check.
+- `make lint`, `make test` and `make build` from the repo root. `make lint`
+  runs the linter, the typecheck and the id check; `make test` runs the
+  unit tests, which sit beside the code as `*.test.ts` and need no
+  server and no running app.
 - `make dev` wants a server to talk to. The server repository's
   `make dev` serves one at `http://localhost:8091`.
 - The bridge (`src/shared/`) is a contract with the server. A change to
