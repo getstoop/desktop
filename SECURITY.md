@@ -36,7 +36,8 @@ Out of scope:
 - Electron and Chromium themselves (report to them directly), unless
   the problem is that this app ships a version with a known fix
   outstanding.
-- That the builds are unsigned. It is known, and the README says so.
+- That the Windows and Linux builds are unsigned. It is known, and the
+  README says so.
 
 ## What the app's trust model is
 

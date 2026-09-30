@@ -8,24 +8,27 @@ to keep in step with the server: one new endpoint on the server side
 [docs/architecture/desktop.md](https://github.com/getstoop/stoop/blob/main/docs/architecture/desktop.md)
 in the server repository.
 
-## Builds are unsigned
+## Which builds are signed
 
 There is no release yet. CI builds an installer for macOS, Windows and
-Linux on every push, and none of them is signed or notarized, so each
-system warns before it opens one:
+Linux on every push. A release's macOS installer is signed; nothing
+else is, and each system warns before it opens one of those:
 
-- **macOS** refuses the app on first open. Open it once, then allow it
-  under System Settings → Privacy & Security → Open Anyway. An unsigned
-  build may also show no notifications: macOS attributes a banner to a
-  signed identifier and drops the ones it cannot attribute.
+- **macOS**, built for a release, is signed with a Developer ID and
+  notarized by Apple, and opens like any other app. A build from a push
+  or a pull request is not signed, and macOS refuses it on first open.
+  Open it once, then allow it under System Settings → Privacy &
+  Security → Open Anyway. An unsigned build may also show no
+  notifications: macOS attributes a banner to a signed identifier and
+  drops the ones it cannot attribute.
 - **Windows** shows SmartScreen's "Windows protected your PC". More info
   → Run anyway.
 - **Linux** packages carry no signature. An AppImage has to be made
   executable before it runs (`chmod +x`).
 
 Only get past these warnings for a build you made yourself or took from
-this repository. Signing for macOS comes first and Windows after it;
-this section goes when they land.
+this repository. Signing for Windows is next; its entry here goes when
+that lands.
 
 ## Who is responsible
 

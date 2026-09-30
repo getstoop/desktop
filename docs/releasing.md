@@ -106,6 +106,7 @@ signed installers on the run and attaches them to nothing.
 The two workflows build the app the same way, in a package job each. A
 change to how it is built belongs in both.
 
-The installers are unsigned until signing lands (the README says what
-each system does about that), and the app does not update itself: a new
-version is a new download.
+The macOS installer is signed and notarized, and a tag fails when the
+secrets for that are missing. The Windows and Linux ones are unsigned
+(the README says what each system does about that). The app does not
+update itself: a new version is a new download.
