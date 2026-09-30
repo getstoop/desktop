@@ -1,0 +1,34 @@
+name: Website
+
+# The website follows the releases here. getstoop.org writes its release
+# index from GitHub's published releases at every build, so what it
+# needs when a release is published, taken back or deleted is a build:
+# this posts to the site's Cloudflare deploy hook, and the site rebuilds
+# from its main. A draft is invisible to the site, so a tag's Release
+# run, which makes a draft, does nothing here; publishing it does.
+#
+# The hook's URL is the secret CLOUDFLARE_DEPLOY_HOOK, created in the
+# website's Cloudflare project (its README, Deploying). A run that fails
+# here is the sign the site is stale: post to the hook by hand, or push
+# anything to the website's main.
+on:
+  release:
+    types: [published, unpublished, deleted]
+
+permissions: {}
+
+jobs:
+  rebuild:
+    name: Rebuild getstoop.org
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to the deploy hook
+        env:
+          HOOK: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::CLOUDFLARE_DEPLOY_HOOK is not set; the site will not learn of ${{ github.event.release.tag_name }} until something else rebuilds it"
+            exit 1
+          fi
+          curl --silent --show-error --fail -X POST "$HOOK" > /dev/null
+          echo "Rebuild requested for ${{ github.event.release.tag_name }} (${{ github.event.action }})."
