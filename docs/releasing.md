@@ -74,6 +74,12 @@ identifies such a build.
    publish. Anything wrong after that becomes a patch release; the tag
    is never moved. Publishing is the moment every installed app sees
    the release: each checks within hours and downloads it on its own.
+   It is also the moment the website learns of it: the Website workflow
+   (`.github/workflows/website.yml`) runs on the publish and posts to
+   getstoop.org's deploy hook, and the site rebuilds its download page
+   from GitHub's published releases. Nothing else has to be done for
+   the site. If that run is red the site is stale; the secret it needs
+   is `CLOUDFLARE_DEPLOY_HOOK`, from the website's Cloudflare project.
 
 ## A patch release
 
