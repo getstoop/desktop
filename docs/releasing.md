@@ -108,7 +108,8 @@ away.
 The Build workflow makes the installers on every push, so packaging is
 exercised all the time. What only the Release workflow does is not: the
 version check against the tag, making the draft, electron-builder
-attaching to it, and signing and notarizing the macOS build. After
+attaching to it, signing the macOS and Windows builds and notarizing
+the macOS one. After
 changing any of them in `.github/workflows/release.yml`, cut a release
 candidate before the release that matters. Signing alone can be tried
 without a tag: run the Release workflow by hand on `main`, which leaves
@@ -117,9 +118,11 @@ signed installers on the run and attaches them to nothing.
 The two workflows build the app the same way, in a package job each. A
 change to how it is built belongs in both.
 
-The macOS installer is signed and notarized, and a tag fails when the
-secrets for that are missing. The Windows and Linux ones are unsigned
-(the README says what each system does about that).
+The macOS installer is signed and notarized and the Windows one is
+signed, and a tag fails when the secrets for either are missing. A
+verify step then asks each installer whether it took, and that going
+red is what says not to publish the draft. The Linux packages are
+unsigned (the README says what each system does about that).
 
 ## Updates
 
@@ -145,11 +148,13 @@ What that asks of a release:
   which About reports.
 - **A public repository, or a published release.** The updater reads the
   release without credentials. It cannot see a draft.
-- **Windows verifies nothing yet.** Until the Windows build is signed
-  (STOOP-310), the downloaded installer is checked against the sha512 in
-  `latest.yml` and no further. Once it is signed, electron-builder
-  writes the publisher's name into the app and the updater refuses an
-  installer signed by anyone else.
+- **A signed Windows build.** electron-builder writes the publisher's
+  name from `electron-builder.windows-signing.yml` into the app, and
+  the updater refuses an installer whose signature names anyone else;
+  a change to the certificate's subject goes into that file with it. An
+  app from 0.1.0, which came before the signing, checks the sha512 in
+  `latest.yml` and no further, and takes the first signed release like
+  any other.
 
 Changing the updater, or how the release attaches its files, is one of
 the things a release candidate is for: cut one, install it, publish a

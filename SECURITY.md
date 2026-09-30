@@ -20,7 +20,7 @@ crediting the reporter, unless they prefer otherwise.
 ## Supported versions
 
 The newest release. Older versions are not patched, so staying current
-is the supported path. Until the first release there is only `main`.
+is the supported path.
 
 ## Scope
 
@@ -36,8 +36,8 @@ Out of scope:
 - Electron and Chromium themselves (report to them directly), unless
   the problem is that this app ships a version with a known fix
   outstanding.
-- That the Windows and Linux builds are unsigned. It is known, and the
-  README says so.
+- That the Linux builds are unsigned. It is known, and the README says
+  so.
 
 ## What the app's trust model is
 

@@ -83,8 +83,7 @@ jobs:
 
   # Build's package job with the signing around it; a change to how the
   # app is built belongs in both. The macOS installer is signed and
-  # notarized. Windows' and Linux's are unsigned; Windows signing
-  # (STOOP-310) plugs in here the same way.
+  # notarized, the Windows one is signed, and Linux's is unsigned.
   package:
     name: Package (${{ matrix.os }})
     needs: [check, test, draft]
@@ -105,6 +104,10 @@ jobs:
       # Off, electron-builder signs with nothing, whatever a keychain
       # holds, so it is on exactly where the certificate is handed over.
       CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.os == 'macos-latest' }}
+      # Windows signs by configuration, not by what is within reach: the
+      # Azure options are a second file on top of electron-builder.yml,
+      # read here and not by Build.
+      BUILDER_CONFIG: ${{ matrix.os == 'windows-latest' && '--config electron-builder.windows-signing.yml' || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -180,10 +183,32 @@ jobs:
             echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID"
             echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
           } >> "$GITHUB_ENV"
+      # An Entra app registration allowed to sign with the certificate
+      # profile, as the three variables the Azure SDK reads on its own.
+      # Handed over at the same point as the macOS certificate, and for
+      # the same reason.
+      - name: Signing credentials (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: bash
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          for name in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::a release has to be signed, and these secrets are not set:$missing"
+            exit 1
+          fi
+          for name in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET; do
+            echo "$name=${!name}" >> "$GITHUB_ENV"
+          done
       - if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        run: pnpm exec electron-builder --publish never
+        run: pnpm exec electron-builder --publish never ${{ env.BUILDER_CONFIG }}
       - if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        run: pnpm exec electron-builder --publish always
+        run: pnpm exec electron-builder --publish always ${{ env.BUILDER_CONFIG }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # electron-builder only warns when it cannot sign or notarize, so ask
@@ -199,6 +224,43 @@ jobs:
           codesign -dvv "$app" 2>&1 | grep -q "^Authority=Developer ID Application:"
           codesign -dvv "$app" 2>&1 | grep -q "flags=.*runtime"
           xcrun stapler validate "$app"
+      # The same question of the Windows build. Every signature has to
+      # hold, carry a timestamp (the certificate lasts three days; the
+      # timestamp is what keeps the signature good after it), and name the
+      # publisher an installed app will hold an update to, which is what
+      # electron-builder wrote into app-update.yml from
+      # electron-builder.windows-signing.yml.
+      - name: Verify signatures (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          $yml = Get-Content -Raw dist/win-unpacked/resources/app-update.yml
+          if ($yml -notmatch '(?m)^publisherName:[ \t]*\r?\n[ \t]*-[ \t]*(\S.*?)[ \t\r]*$') {
+            Write-Host "::error::app-update.yml names no publisher, so an installed app would take an update signed by anyone"
+            exit 1
+          }
+          $publisher = $Matches[1]
+          $files = @('dist/win-unpacked/Stoop.exe') + (Get-ChildItem dist/*.exe).FullName
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature -LiteralPath $file
+            $signer = $sig.SignerCertificate
+            $subject = if ($signer) { $signer.Subject } else { 'nobody' }
+            # electron-updater's rule: a bare name is the common name; a
+            # distinguished name matches on every field it names.
+            $named = if (-not $signer) {
+              $false
+            } elseif ($publisher -match '=') {
+              @($publisher -split ',\s*' | Where-Object { $subject -cnotmatch "(^|, )$([regex]::Escape($_))(,|$)" }).Count -eq 0
+            } else {
+              $publisher -ceq $signer.GetNameInfo('SimpleName', $false)
+            }
+            $stamped = if ($sig.TimeStamperCertificate) { 'timestamped' } else { 'not timestamped' }
+            if ($sig.Status -ne 'Valid' -or -not $sig.TimeStamperCertificate -or -not $named) {
+              Write-Host "::error::${file}: $($sig.Status), $stamped, signed by '$subject' where the app expects '$publisher'"
+              exit 1
+            }
+            Write-Host "${file}: $($sig.Status), $stamped, signed by $subject"
+          }
       # For a rehearsal, which attaches to nothing, and kept two weeks as
       # Build's are. A release carries its own.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

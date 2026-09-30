@@ -1,0 +1,33 @@
+# The Windows signing, on top of electron-builder.yml. The Release
+# workflow builds Windows with `--config electron-builder.windows-signing.yml`
+# and nothing else does. macOS signs whenever a certificate is within
+# reach and is plainly unsigned otherwise, so its options sit in the base
+# file; Azure Artifact Signing signs whenever these options are present,
+# and Build, which has no credentials, would fail on them. So they are
+# here, and the base file has none.
+#
+# Nothing here is secret. The credentials are the environment the Azure
+# SDK reads on its own: AZURE_TENANT_ID, AZURE_CLIENT_ID and
+# AZURE_CLIENT_SECRET, an app registration given the Artifact Signing
+# Certificate Profile Signer role on the certificate profile.
+# electron-builder installs the TrustedSigning PowerShell module and runs
+# Invoke-TrustedSigning on the app, the uninstaller and the installer,
+# each with a timestamp: the certificate itself is good for three days
+# and reissued daily, and the timestamp is what keeps a signature good
+# after it.
+extends: ./electron-builder.yml
+win:
+  azureSignOptions:
+    # Regional, and has to be the region the signing account was made in.
+    endpoint: https://eus.codesigning.azure.net
+    codeSigningAccountName: getstoop
+    certificateProfileName: getstoop-public
+    # The certificate's subject, as the updater checks a downloaded
+    # installer against it: electron-builder writes it into app-update.yml
+    # beside the app, and electron-updater refuses an installer signed by
+    # anyone else. A bare name is the common name and matches with a
+    # warning in the updater's log; a distinguished name, comma separated
+    # as Windows prints it, matches on every field it names. Change this
+    # with the certificate profile, and Release's verify step holds the
+    # signature to it.
+    publisherName: "CN=getstoop LLC, O=getstoop LLC, L=Atlanta, S=Georgia, C=US"
