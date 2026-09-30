@@ -40,7 +40,7 @@ the app answers for what they do with it.
 
 ```
 pnpm install
-make dev        # electron-vite with --watch; `make lint`, `make build`, `make package` too
+make dev        # electron-vite with --watch; `make lint`, `make test`, `make build`, `make package` too
 ```
 
 The main process and the preload scripts rebuild and relaunch the app
@@ -118,6 +118,8 @@ src/renderer/   the app's own pages, one directory each:
                 add (a server), chrome (the title strip), gate (a server
                 that is too old, unreachable, or not Stoop)
 src/shared/     the bridge contract and IPC names, imported by both sides
+*.test.ts       unit tests, beside the code they cover; `make test` runs them
+                in Node with Electron mocked, so nothing launches
 resources/      app icons for electron-builder and the tray glyphs; cut in
                 the server repo (brand/), copied here by `make brand`
 ```

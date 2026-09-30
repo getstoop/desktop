@@ -1,4 +1,4 @@
-.PHONY: dev dev-git-check lint build brand package package-dir sign-adhoc clean
+.PHONY: dev dev-git-check lint test build brand package package-dir sign-adhoc clean
 
 ## dev: the shell with hot reload — the main process and the preload scripts
 ## rebuild and relaunch the app on change; its own pages hot-reload from a
@@ -24,6 +24,10 @@ lint:
 	pnpm typecheck
 	pnpm check:ids
 	pnpm check:version
+
+## test: the unit tests, beside the code as *.test.ts; nothing launches
+test:
+	pnpm test
 
 build:
 	pnpm build
