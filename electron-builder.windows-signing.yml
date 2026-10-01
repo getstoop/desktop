@@ -1,4 +1,4 @@
-# The Windows signing, on top of electron-builder.yml. The Release
+# The Windows signing, on top of electron-builder.yml. The Build release
 # workflow builds Windows with `--config electron-builder.windows-signing.yml`
 # and nothing else does. macOS signs whenever a certificate is within
 # reach and is plainly unsigned otherwise, so its options sit in the base
@@ -28,6 +28,6 @@ win:
     # anyone else. A bare name is the common name and matches with a
     # warning in the updater's log; a distinguished name, comma separated
     # as Windows prints it, matches on every field it names. Change this
-    # with the certificate profile, and Release's verify step holds the
-    # signature to it.
+    # with the certificate profile, and Build release's verify step holds
+    # the signature to it.
     publisherName: "CN=getstoop LLC, O=getstoop LLC, L=Atlanta, S=Georgia, C=US"
