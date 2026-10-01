@@ -89,7 +89,7 @@ export class AppTray {
   }
 }
 
-// Set by before-quit so a close during quit is a real close.
+// Set as the app starts to quit, so a close during quit is a real close.
 let quitting = false;
 export function markQuitting() {
   quitting = true;
