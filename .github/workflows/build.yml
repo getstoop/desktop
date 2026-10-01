@@ -2,7 +2,7 @@ name: Build
 
 # Lint, typecheck, and an unsigned installer for every platform, on every
 # push to main and every pull request. No secret is read here: signing,
-# and a release, are Release's (release.yml).
+# and a release, are Build release's (build-release.yml).
 on:
   push:
     branches: [main]
@@ -46,8 +46,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
-  # Release's package job without the signing; a change to how the app is
-  # built belongs in both.
+  # Build release's package job without the signing; a change to how the
+  # app is built belongs in both.
   package:
     name: Package (${{ matrix.os }})
     needs: [check, test]
