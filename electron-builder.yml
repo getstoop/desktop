@@ -48,9 +48,9 @@ mac:
 win:
   target: nsis
   # No signing here. The Azure options that turn it on are in
-  # electron-builder.windows-signing.yml, read by the Release workflow and
-  # nothing else: their presence is what signs, and Build has no
-  # credentials to sign with.
+  # electron-builder.windows-signing.yml, read by the Build release
+  # workflow and nothing else: their presence is what signs, and Build
+  # has no credentials to sign with.
 linux:
   category: Network;Chat
   target: [AppImage, deb]

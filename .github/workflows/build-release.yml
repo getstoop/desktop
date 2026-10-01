@@ -1,95 +1,106 @@
-name: Release
+name: Build release
 
-# What signs. A tag is a release (docs/releasing.md): it makes a draft and
-# attaches an installer for every platform to it. A run started by hand on
-# main is a rehearsal: the same installers, signed the same way, left on
-# the run and attached to nothing.
+# The second step of a release: merging a release candidate
+# (cut-release-candidate.yml) builds it and leaves it unpublished. An
+# installer for every platform goes on a draft release, signed. No tag is
+# made here: GitHub makes it when the draft is published, and that is the
+# release.
+#
+# A run started by hand on main is a rehearsal: the same installers,
+# signed the same way, left on the run and attached to nothing. A failed
+# build is run again from its run page. Nothing starts on a pushed tag.
 #
 # The signing secrets are read here and nowhere else. Build, which runs on
 # every push and pull request, has none of them in reach.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  check:
-    name: Lint and typecheck
+  # Every merge to main comes through here; only a release candidate's
+  # goes on to a draft. A rehearsal has no version and is built all the
+  # same.
+  candidate:
+    name: Find the release candidate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      version: ${{ steps.find.outputs.version }}
     steps:
-      # What carries the certificate's name has been reviewed: a tag, or
-      # main. The button offers every branch, so say no here.
-      - name: Only a tag or main
-        if: ${{ !startsWith(github.ref, 'refs/tags/') && github.ref != 'refs/heads/main' }}
+      # What carries the certificate's name has been reviewed: main. The
+      # button offers every branch, so say no here.
+      - name: Only on main
+        if: ${{ github.ref != 'refs/heads/main' }}
         run: |
-          echo "::error::Release signs what it builds, so it runs for a tag or on main, not on $GITHUB_REF_NAME. Build makes an unsigned installer from any branch."
+          echo "::error::Build release signs what it builds, so it runs on main, not on $GITHUB_REF_NAME. Build makes an unsigned installer from any branch."
           exit 1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm check:version
+      - id: find
+        if: ${{ github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].head.ref // ""')
+          case "$head" in
+            release-candidate/*) echo "version=${head#release-candidate/}" >> "$GITHUB_OUTPUT" ;;
+            *) echo "This merge is not a release candidate; nothing to build." ;;
+          esac
 
-  # Its own job, so what failed is plain from the name.
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test
-
-  # The tag has to name the version in package.json, and the draft the
-  # installers attach to is made once, here: left to the package jobs,
-  # three of them would each look for the release at the same moment, find
-  # none, and make their own. The notes are docs/release-notes.md, which
-  # each release PR rewrites, with the list of merged pull requests
-  # generated below them.
+  # The draft the installers attach to is made once, here: left to the
+  # package jobs, three of them would each look for the release at the
+  # same moment, find none, and make their own. It sits on the commit that
+  # is built, and its notes are docs/release-notes.md as the release
+  # candidate left it.
   draft:
     name: Draft release
-    if: ${{ startsWith(github.ref, 'refs/tags/') }}
-    needs: [check, test]
+    needs: candidate
+    if: ${{ needs.candidate.outputs.version != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      VERSION: ${{ needs.candidate.outputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: node scripts/check-version.mjs "$GITHUB_REF_NAME"
+        with:
+          # Every tag, to know this release is newer than the newest.
+          fetch-depth: 0
+      - name: Check the version against the tree
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          number='(0|[1-9][0-9]*)'
+          release="^$number\.$number\.$number$"
+          [[ "$VERSION" =~ $release ]] || fail "\"$VERSION\" is not a version."
+          node scripts/check-version.mjs "$VERSION"
+          newest=$(git tag --list 'v*' | sed 's/^v//' | grep -E "$release" | sort -V | tail -n 1 || true)
+          [ "$VERSION" != "$newest" ] && [ "$(printf '%s\n' "$newest" "$VERSION" | sort -V | tail -n 1)" = "$VERSION" ] ||
+            fail "$VERSION is not newer than $newest, the newest release."
       - name: Create the draft
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
-            --title "Stoop Desktop ${GITHUB_REF_NAME#v}" \
-            --notes-file docs/release-notes.md --generate-notes \
-            ${{ contains(github.ref_name, '-rc.') && '--prerelease' || '' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A run started again replaces the draft the first one left.
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release delete "v$VERSION" --yes
+          fi
+          gh release create "v$VERSION" --draft --target "$GITHUB_SHA" \
+            --title "Stoop Desktop $VERSION" \
+            --notes-file docs/release-notes.md
 
   # Build's package job with the signing around it; a change to how the
   # app is built belongs in both. The macOS installer is signed and
   # notarized, the Windows one is signed, and Linux's is unsigned.
   package:
     name: Package (${{ matrix.os }})
-    needs: [check, test, draft]
-    # `draft` is skipped on everything but a tag, and a skipped need would
-    # skip this job with it.
-    if: ${{ !cancelled() && needs.check.result == 'success' && needs.test.result == 'success' && (needs.draft.result == 'success' || needs.draft.result == 'skipped') }}
+    needs: [candidate, draft]
+    # `draft` is skipped for a rehearsal, and a skipped need would skip
+    # this job with it.
+    if: ${{ !cancelled() && (needs.draft.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.candidate.result == 'success')) }}
     runs-on: ${{ matrix.os }}
     # Notarization waits on Apple, minutes as a rule and hours when its
     # queue is slow; the default would let the job sit for six.
@@ -205,15 +216,17 @@ jobs:
           for name in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET; do
             echo "$name=${!name}" >> "$GITHUB_ENV"
           done
-      - if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      - if: ${{ needs.candidate.outputs.version == '' }}
         run: pnpm exec electron-builder --publish never ${{ env.BUILDER_CONFIG }}
-      - if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      # electron-builder finds the draft by the tag it will carry,
+      # v<package.json's version>, and attaches what it builds.
+      - if: ${{ needs.candidate.outputs.version != '' }}
         run: pnpm exec electron-builder --publish always ${{ env.BUILDER_CONFIG }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # electron-builder only warns when it cannot sign or notarize, so ask
       # the bundle itself: a Developer ID signature that holds under the
-      # hardened runtime, and Apple's ticket stapled to it. A tag's draft
+      # hardened runtime, and Apple's ticket stapled to it. The draft
       # release has its files by now; this going red is what says not to
       # publish it.
       - name: Verify signature and notarization (macOS)

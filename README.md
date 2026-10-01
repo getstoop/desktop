@@ -66,8 +66,9 @@ so the web app wears it too and hides its own picker. `src/shared/themes.ts`
 is the app's copy of the web app's themes; the shape of a theme (its
 tokens, no name) is the contract, so a theme only this side knows still
 renders. `pnpm package` builds an installer for this machine into
-`dist/`; CI builds all three platforms on every push. A release is a
-`v*` tag, which attaches those installers to a draft release:
+`dist/`; CI builds all three platforms on every push. A release starts
+as a release candidate pull request; merging it attaches those
+installers to a draft release, and publishing the draft makes the tag:
 [docs/releasing.md](docs/releasing.md).
 
 The macOS build is signed when there is a Developer ID Application
@@ -75,8 +76,9 @@ certificate to sign with and notarized when there are credentials to
 notarize with, and is plainly unsigned otherwise. On this machine that is
 the login keychain and a `notarytool` profile named in
 `APPLE_KEYCHAIN_PROFILE`. In CI it is five repository secrets, used for
-the Release workflow, which runs for a tag and when started by hand on
-`main` (Actions → Release → Run workflow), and fails without them:
+the Build release workflow, which runs when a release candidate merges
+and when started by hand on `main` (Actions → Build release → Run
+workflow), and fails without them:
 `MAC_CSC_LINK` (the .p12, base64), `MAC_CSC_KEY_PASSWORD`, and an App
 Store Connect API key as `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`,
 `APPLE_API_ISSUER`. What the hardened runtime lets through is
@@ -84,10 +86,10 @@ Store Connect API key as `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID`,
 
 The Windows build is signed in CI only, through Azure Artifact Signing.
 The options are `electron-builder.windows-signing.yml` on top of the
-base file, which the Release workflow reads for Windows and Build does
-not, and the credentials are three more repository secrets for the app
-registration allowed to sign: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and
-`AZURE_CLIENT_SECRET`. A `pnpm package` on a Windows machine is
+base file, which the Build release workflow reads for Windows and Build
+does not, and the credentials are three more repository secrets for the
+app registration allowed to sign: `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`
+and `AZURE_CLIENT_SECRET`. A `pnpm package` on a Windows machine is
 unsigned.
 
 ## Updates
