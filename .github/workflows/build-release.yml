@@ -2,8 +2,9 @@ name: Build release
 
 # The second step of a release: merging a release candidate
 # (cut-release-candidate.yml) builds it and leaves it unpublished. An
-# installer for every platform goes on a draft release, signed. No tag is
-# made here: GitHub makes it when the draft is published, and that is the
+# installer for every platform is built and signed, and once all of them
+# have come out right they go on a draft release together. No tag is made
+# here: GitHub makes it when the draft is published, and that is the
 # release.
 #
 # A run started by hand on main is a rehearsal: the same installers,
@@ -22,7 +23,7 @@ permissions:
 
 jobs:
   # Every merge to main comes through here; only a release candidate's
-  # goes on to a draft. A rehearsal has no version and is built all the
+  # goes on to build. A rehearsal has no version and is built all the
   # same.
   candidate:
     name: Find the release candidate
@@ -51,28 +52,16 @@ jobs:
             release-candidate/*) echo "version=${head#release-candidate/}" >> "$GITHUB_OUTPUT" ;;
             *) echo "This merge is not a release candidate; nothing to build." ;;
           esac
-
-  # The draft the installers attach to is made once, here: left to the
-  # package jobs, three of them would each look for the release at the
-  # same moment, find none, and make their own. It sits on the commit that
-  # is built, and its notes are docs/release-notes.md as the release
-  # candidate left it.
-  draft:
-    name: Draft release
-    needs: candidate
-    if: ${{ needs.candidate.outputs.version != '' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      VERSION: ${{ needs.candidate.outputs.version }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ steps.find.outputs.version != '' }}
         with:
           # Every tag, to know this release is newer than the newest.
           fetch-depth: 0
+      # Before anything is built or signed.
       - name: Check the version against the tree
+        if: ${{ steps.find.outputs.version != '' }}
+        env:
+          VERSION: ${{ steps.find.outputs.version }}
         run: |
           fail() { echo "::error::$1"; exit 1; }
           number='(0|[1-9][0-9]*)'
@@ -82,25 +71,14 @@ jobs:
           newest=$(git tag --list 'v*' | sed 's/^v//' | grep -E "$release" | sort -V | tail -n 1 || true)
           [ "$VERSION" != "$newest" ] && [ "$(printf '%s\n' "$newest" "$VERSION" | sort -V | tail -n 1)" = "$VERSION" ] ||
             fail "$VERSION is not newer than $newest, the newest release."
-      - name: Create the draft
-        run: |
-          # A run started again replaces the draft the first one left.
-          if gh release view "v$VERSION" > /dev/null 2>&1; then
-            gh release delete "v$VERSION" --yes
-          fi
-          gh release create "v$VERSION" --draft --target "$GITHUB_SHA" \
-            --title "Stoop Desktop $VERSION" \
-            --notes-file docs/release-notes.md
 
   # Build's package job with the signing around it; a change to how the
   # app is built belongs in both. The macOS installer is signed and
   # notarized, the Windows one is signed, and Linux's is unsigned.
   package:
     name: Package (${{ matrix.os }})
-    needs: [candidate, draft]
-    # `draft` is skipped for a rehearsal, and a skipped need would skip
-    # this job with it.
-    if: ${{ !cancelled() && (needs.draft.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.candidate.result == 'success')) }}
+    needs: candidate
+    if: ${{ needs.candidate.outputs.version != '' || github.event_name == 'workflow_dispatch' }}
     runs-on: ${{ matrix.os }}
     # Notarization waits on Apple, minutes as a rule and hours when its
     # queue is slow; the default would let the job sit for six.
@@ -109,8 +87,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-    permissions:
-      contents: write
     env:
       # Off, electron-builder signs with nothing, whatever a keychain
       # holds, so it is on exactly where the certificate is handed over.
@@ -216,19 +192,13 @@ jobs:
           for name in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET; do
             echo "$name=${!name}" >> "$GITHUB_ENV"
           done
-      - if: ${{ needs.candidate.outputs.version == '' }}
-        run: pnpm exec electron-builder --publish never ${{ env.BUILDER_CONFIG }}
-      # electron-builder finds the draft by the tag it will carry,
-      # v<package.json's version>, and attaches what it builds.
-      - if: ${{ needs.candidate.outputs.version != '' }}
-        run: pnpm exec electron-builder --publish always ${{ env.BUILDER_CONFIG }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Nothing is attached from here. What is built goes on the run, and
+      # the draft job takes it from there once every platform has built.
+      - run: pnpm exec electron-builder --publish never ${{ env.BUILDER_CONFIG }}
       # electron-builder only warns when it cannot sign or notarize, so ask
       # the bundle itself: a Developer ID signature that holds under the
-      # hardened runtime, and Apple's ticket stapled to it. The draft
-      # release has its files by now; this going red is what says not to
-      # publish it.
+      # hardened runtime, and Apple's ticket stapled to it. This going red
+      # means no draft is made.
       - name: Verify signature and notarization (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
@@ -274,8 +244,9 @@ jobs:
             }
             Write-Host "${file}: $($sig.Status), $stamped, signed by $subject"
           }
-      # For a rehearsal, which attaches to nothing, and kept two weeks as
-      # Build's are. A release carries its own.
+      # What the draft is made from, and all a rehearsal leaves. Kept two
+      # weeks as Build's are; a release carries its own. The blockmaps are
+      # what let an installed app download only what changed.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: stoop-${{ matrix.os }}
@@ -286,5 +257,50 @@ jobs:
             dist/*.exe
             dist/*.AppImage
             dist/*.deb
+            dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
+
+  # Last, and only when every platform built, signed and verified: a
+  # failed build leaves no draft behind to publish by mistake. The draft
+  # sits on the commit that was built, and its notes are
+  # docs/release-notes.md as the release candidate left it.
+  draft:
+    name: Draft release
+    needs: [candidate, package]
+    if: ${{ needs.candidate.outputs.version != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.candidate.outputs.version }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: stoop-*
+          path: dist
+          merge-multiple: true
+      # An installed app reads latest*.yml and asks for the files it
+      # names, by those names (docs/releasing.md → Updates). A release
+      # missing one is a release no installed app can take.
+      - name: Check the files
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          for yml in latest-mac.yml latest.yml latest-linux.yml; do
+            [ -f "dist/$yml" ] || fail "$yml was not built."
+            for file in $(sed -n -E 's/^ +- url: //p' "dist/$yml"); do
+              [ -f "dist/$file" ] || fail "$yml names $file, which was not built."
+            done
+          done
+          ls -l dist
+      - name: Create the draft
+        run: |
+          # A run started again replaces the draft the first one left.
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release delete "v$VERSION" --yes
+          fi
+          gh release create "v$VERSION" dist/* --draft --target "$GITHUB_SHA" \
+            --title "Stoop Desktop $VERSION" \
+            --notes-file docs/release-notes.md

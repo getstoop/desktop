@@ -9,11 +9,13 @@ A release is four steps on GitHub. Nobody tags by hand.
    request first, keeping its first line: what changed for the people
    using the app, a minimum server version that moved, anything that
    behaves differently, known issues.
-3. **Wait for Build release.** The merge starts it. It leaves a draft
-   release with an installer for every platform: a universal `.dmg` and
+3. **Wait for Build release.** The merge starts it. It builds and signs
+   an installer for every platform, and once all of them have come out
+   right it leaves them on a draft release: a universal `.dmg` and
    `.zip`, a Windows installer, an AppImage and a `.deb`, with
    `latest-mac.yml`, `latest.yml` and `latest-linux.yml` beside them,
-   which is what an installed app reads ([Updates](#updates)).
+   which is what an installed app reads ([Updates](#updates)). A build
+   that fails leaves no draft; run it again from its run page.
 4. **Publish the draft** from the Releases page. That makes the tag, and
    it is the moment every installed app sees the release: each checks
    within hours and downloads it on its own.
@@ -21,11 +23,9 @@ A release is four steps on GitHub. Nobody tags by hand.
 Before publishing, check the draft. Download each installer from it and
 install it on a clean machine. Add a server, sign in, join voice. Check
 that App settings → About shows the version. Install over the previous
-release and check that the server list and the settings survived. Check
-that the three `latest*.yml` files and the macOS `.zip` are on the
-draft: without them an installed app finds nothing, and without the zip
-a Mac finds the release and cannot take it. Anything wrong after
-publishing becomes the next release; the tag is never moved.
+release and check that the server list and the settings survived.
+Anything wrong after publishing becomes the next release; the tag is
+never moved.
 
 To drop a release, close the pull request, or delete the draft once it
 is built.
@@ -67,8 +67,8 @@ is already past. The commit is what identifies such a build.
 
 The Build workflow makes the installers on every push, so packaging is
 exercised all the time. What only Build release does is not: the
-version check, making the draft, electron-builder attaching to it,
-signing the macOS and Windows builds and notarizing the macOS one. After
+version check, signing the macOS and Windows builds, notarizing the
+macOS one, and making the draft with every file on it. After
 changing any of them in `.github/workflows/build-release.yml`, the next
 release's draft is the test: look it over before publishing, and delete
 it and run the build again if it came out wrong. Signing alone can be
@@ -81,9 +81,9 @@ change to how it is built belongs in both.
 The macOS installer is signed and notarized and the Windows one is
 signed, and Build release fails when the secrets for either are
 missing. A verify step then asks each installer whether it took, and
-that going red is what says not to publish the draft. The Linux
-packages are unsigned (the README says what each system does about
-that).
+the draft is made only when every platform has built and verified. The
+Linux packages are unsigned (the README says what each system does
+about that).
 
 Cut release candidate needs one secret of its own, `RELEASE_TOKEN`: a
 token that can push a branch and open a pull request here.
@@ -103,10 +103,11 @@ quit either way. A check sends GitHub the request and nothing else.
 
 What that asks of a release:
 
-- **The metadata and the zip.** electron-builder attaches
-  `latest-mac.yml`, `latest.yml`, `latest-linux.yml` and the macOS zip
-  with the installers; the check of the draft above looks for them. A
-  release without them is one no installed app can find or take.
+- **The metadata and the zip.** electron-builder writes
+  `latest-mac.yml`, `latest.yml` and `latest-linux.yml` beside what it
+  builds, and Build release makes no draft unless all three are there
+  with every file they name, the macOS zip among them. A release
+  without them is one no installed app can find or take.
 - **A signed macOS build.** Squirrel refuses an update into an unsigned
   app, and refuses an unsigned one. Both hold for a release; a `make
   package` build on a laptop finds the release and fails to install it,

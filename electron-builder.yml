@@ -51,6 +51,11 @@ win:
   # electron-builder.windows-signing.yml, read by the Build release
   # workflow and nothing else: their presence is what signs, and Build
   # has no credentials to sign with.
+# Named on disk as latest.yml names it. electron-builder's own name has
+# spaces in it, which it turns to dashes only as it uploads, and the
+# installer is uploaded by Build release, not by electron-builder.
+nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
 linux:
   category: Network;Chat
   target: [AppImage, deb]
@@ -62,8 +67,9 @@ linux:
       to: icon.png
   mimeTypes:
     - x-scheme-handler/stoop
-# Also what app-update.yml, packed beside the app, points the updater at:
-# the newest published release here. A draft is invisible to it.
+# What app-update.yml, packed beside the app, points the updater at: the
+# newest published release here. A draft is invisible to it. Nothing is
+# published through this: Build release attaches the files itself.
 publish:
   provider: github
   owner: getstoop
