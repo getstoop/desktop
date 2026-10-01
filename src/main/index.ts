@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, autoUpdater, BrowserWindow, ipcMain, shell } from "electron";
 import { IPC, type Probe, VOICE_ACTIONS } from "../shared/bridge";
 import { type DeepLink, linkFromArgv, parseDeepLink, SCHEME } from "./deeplink";
 import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
@@ -36,6 +36,8 @@ if (!app.requestSingleInstanceLock()) {
   route(linkFromArgv(process.argv));
 
   app.on("before-quit", () => markQuitting());
+  // A restart into an update closes the windows before before-quit fires.
+  autoUpdater.on("before-quit-for-update", () => markQuitting());
   app.whenReady().then(start);
 
   // With the window hidden in the tray the app is still running; only a
