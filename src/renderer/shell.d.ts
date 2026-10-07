@@ -30,6 +30,7 @@ declare global {
         dndUntil?: number | null;
         notifications?: boolean;
         voiceCues?: boolean;
+        pushToTalk?: boolean;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
       testNotification(): void;
@@ -43,6 +44,8 @@ declare global {
       ): void;
       pickerChoose(choice: { id: string; audio: boolean } | null): void;
       openExternal(url: string): void;
+      // System Settings → Privacy & Security → Input Monitoring (macOS).
+      openKeyAccess(): void;
       windowAction(action: "minimize" | "maximize" | "close"): void;
       getTheme(): Promise<Palette>;
       onSwitcherRows(handler: (view: SwitcherView) => void): void;

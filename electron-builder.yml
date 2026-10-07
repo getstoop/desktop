@@ -9,6 +9,11 @@ files:
 extraResources:
   - from: resources/tray
     to: .
+  # The push to talk addon (native/keys), built by `pnpm native` before
+  # packaging: universal on macOS, this runner's own elsewhere. Outside the
+  # asar, where a native module has to be to load. src/main/keys.ts.
+  - from: native/keys/build/Release/keys.node
+    to: keys.node
 # stoop:// — the Info.plist entry on macOS and the registry keys the NSIS
 # installer writes on Windows. Linux carries it on the desktop entry, so
 # the .deb registers it and an AppImage, having no install step, may not.
@@ -47,6 +52,9 @@ mac:
       arch: [universal]
 win:
   target: nsis
+  # The push to talk addon is a DLL by another name; signed with the app
+  # wherever the app is signed (electron-builder.windows-signing.yml).
+  signExts: [".node"]
   # No signing here. The Azure options that turn it on are in
   # electron-builder.windows-signing.yml, read by the Build release
   # workflow and nothing else: their presence is what signs, and Build

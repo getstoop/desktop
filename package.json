@@ -12,22 +12,24 @@
   "homepage": "https://github.com/getstoop/desktop",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev --watch",
-    "build": "electron-vite build",
+    "dev": "pnpm native && electron-vite dev --watch",
+    "build": "pnpm native && electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "lint": "biome check src",
     "check:ids": "node scripts/check-ids.mjs",
     "check:version": "node scripts/check-version.mjs",
     "format": "biome format --write src",
-    "package": "electron-vite build && electron-builder --publish never",
-    "package:dir": "electron-vite build && electron-builder --dir"
+    "package": "pnpm build && electron-builder --publish never",
+    "package:dir": "pnpm build && electron-builder --dir",
+    "native": "node-gyp rebuild --directory native/keys"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "node-gyp": "^13.1.0",
     "typescript": "^7.0.2",
     "vite": "^7.0.0",
     "vitest": "^5.0.2"

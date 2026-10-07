@@ -103,6 +103,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # The push to talk addon reads the keys through Xlib on Linux.
+      - if: ${{ runner.os == 'Linux' }}
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev
       - run: pnpm build
       # After the install and the build, so no dependency's script runs with
       # these in reach. The certificate is a Developer ID Application .p12,

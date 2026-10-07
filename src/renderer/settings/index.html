@@ -1,138 +1,181 @@
 <!-- biome-ignore-all lint/a11y/useAriaPropsForRole: each switch is a native checkbox, which exposes its own checked state; ARIA in HTML says not to add aria-checked to one -->
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:*" />
-    <title>App settings</title>
-    <link rel="stylesheet" href="../shell.css" />
-    <link rel="stylesheet" href="./settings.css" />
-  </head>
-  <body>
-    <div class="settings-page">
-      <nav class="settings-nav" aria-label="Settings sections">
-        <button id="back" type="button" class="back">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>
-          <span id="backLabel">Back</span>
-        </button>
-        <p class="eyebrow">App settings</p>
-        <button type="button" class="nav-link active" data-section="general">General</button>
-        <button type="button" class="nav-link" data-section="notifications">Notifications</button>
-        <button type="button" class="nav-link" data-section="appearance">Appearance</button>
-        <button type="button" class="nav-link" data-section="servers">Servers</button>
-        <button type="button" class="nav-link" data-section="about">About</button>
-      </nav>
-      <main class="settings-scroll">
-        <div class="settings-content">
-          <section id="general" class="section">
-            <header class="settings-head">
-              <h1>General</h1>
-              <p>These belong to this app on this computer. Everything about you and your servers lives in each server's own settings.</p>
-            </header>
-            <div class="setting-row">
-              <div class="setting-text">
-                <span class="setting-title">Launch at login</span>
-                <span class="setting-desc">Open Stoop when you sign in to this computer.</span>
-              </div>
-              <div class="setting-control"><input id="launchAtLogin" type="checkbox" role="switch" class="switch" /></div>
-            </div>
-            <div class="setting-row">
-              <div class="setting-text">
-                <span class="setting-title">Keep running when the window closes</span>
-                <span class="setting-desc">Closing the window leaves Stoop in the menu bar and voice keeps going. Quit from there.</span>
-              </div>
-              <div class="setting-control"><input id="keepRunning" type="checkbox" role="switch" class="switch" /></div>
-            </div>
-          </section>
 
-          <section id="notifications" class="section" hidden>
-            <header class="settings-head">
-              <h1>Notifications</h1>
-              <p>What is allowed to interrupt you, on every server you have open in this app.</p>
-            </header>
-            <div class="setting-row">
-              <div class="setting-text">
-                <span class="setting-title">Do not disturb</span>
-                <span class="setting-desc">Holds every banner, and sets do not disturb on every server here so everyone sees it on your dot. Turning it off here turns it off on them all.</span>
-              </div>
-              <div class="setting-control">
-                <select id="dndDuration" aria-label="Do not disturb">
-                  <option value="off">Off</option>
-                  <option value="1h">1 hour</option>
-                  <option value="3h">3 hours</option>
-                  <option value="1d">1 day</option>
-                  <option value="1w">1 week</option>
-                  <option value="never">Never expire</option>
-                </select>
-              </div>
-            </div>
-            <div class="setting-row">
-              <div class="setting-text">
-                <span class="setting-title">Desktop notifications</span>
-                <span class="setting-desc">A native banner when someone mentions you, whichever server it was. Off here means no banners from any of them.</span>
-              </div>
-              <div class="setting-control"><input id="desktopNotifications" type="checkbox" role="switch" class="switch" /></div>
-            </div>
-            <div class="setting-row">
-              <div class="setting-text">
-                <span class="setting-title">Voice room sounds</span>
-                <span class="setting-desc">A soft tone when someone joins or leaves the call you're in, whichever server it's on. Off here silences it on all of them.</span>
-              </div>
-              <div class="setting-control"><input id="voiceCues" type="checkbox" role="switch" class="switch" /></div>
-            </div>
-            <div class="setting-row">
-              <div class="setting-text">
-                <span class="setting-title">Check they arrive</span>
-                <span class="setting-desc">Nothing? Your computer keeps its own switch for Stoop, in the system's notification settings.</span>
-              </div>
-              <div class="setting-control"><button id="testNotification" type="button" class="chip">Send a test notification</button></div>
-            </div>
-          </section>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:*" />
+  <title>App settings</title>
+  <link rel="stylesheet" href="../shell.css" />
+  <link rel="stylesheet" href="./settings.css" />
+</head>
 
-          <section id="appearance" class="section" hidden>
-            <header class="settings-head">
-              <h1>Appearance</h1>
-              <p>How Stoop looks in this app. Every server you open here wears it, and so do the app's own screens. A server opened in a browser keeps the theme chosen there.</p>
-            </header>
-            <p id="themeInUse" class="theme-in-use"></p>
-            <fieldset id="themeFilters" class="theme-filters">
-              <legend>Show</legend>
-            </fieldset>
-            <div id="themeCards" class="theme-cards"></div>
-            <label class="theme-system">
-              <input id="followSystem" type="checkbox" role="switch" class="switch" />
-              <span>Follow the system's light/dark setting<span id="systemHint" class="hint"></span></span>
-            </label>
-          </section>
-
-          <section id="servers" class="section" hidden>
-            <header class="settings-head">
-              <h1>Servers</h1>
-              <p>Every server you have added, each with its own sign-in. Removing one here forgets it on this computer only.</p>
-            </header>
-            <div id="serverList" class="server-list"></div>
-            <div class="actions"><button id="addServer" type="button" class="chip">Add a server…</button></div>
-          </section>
-
-          <section id="about" class="section" hidden>
-            <header class="settings-head">
-              <h1>About</h1>
-            </header>
-            <div class="setting-row">
-              <div class="setting-text">
-                <span class="setting-title">Stoop Desktop <span id="version"></span></span>
-                <span id="updateStatus" class="setting-desc" role="status"></span>
-              </div>
-              <div class="setting-control">
-                <button id="updateAction" type="button" class="chip" hidden></button>
-                <button id="releases" type="button" class="chip">Releases</button>
-              </div>
+<body>
+  <div class="settings-page">
+    <nav class="settings-nav" aria-label="Settings sections">
+      <button id="back" type="button" class="back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5M11 18l-6-6 6-6"></path>
+        </svg>
+        <span id="backLabel">Back</span>
+      </button>
+      <p class="eyebrow">App settings</p>
+      <button type="button" class="nav-link active" data-section="general">General</button>
+      <button type="button" class="nav-link" data-section="notifications">Notifications</button>
+      <button type="button" class="nav-link" data-section="voice">Voice</button>
+      <button type="button" class="nav-link" data-section="appearance">Appearance</button>
+      <button type="button" class="nav-link" data-section="servers">Servers</button>
+      <button type="button" class="nav-link" data-section="about">About</button>
+    </nav>
+    <main class="settings-scroll">
+      <div class="settings-content">
+        <section id="general" class="section">
+          <header class="settings-head">
+            <h1>General</h1>
+            <p>These belong to this app on this computer. Everything about you and your servers lives in each server's
+              own settings.</p>
+          </header>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Launch at login</span>
+              <span class="setting-desc">Open Stoop when you sign in to this computer.</span>
             </div>
-          </section>
-        </div>
-      </main>
-    </div>
-    <script type="module" src="./main.ts"></script>
-  </body>
+            <div class="setting-control"><input id="launchAtLogin" type="checkbox" role="switch" class="switch" /></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Keep running when the window closes</span>
+              <span class="setting-desc">Closing the window leaves Stoop in the menu bar and voice keeps going. Quit
+                from there.</span>
+            </div>
+            <div class="setting-control"><input id="keepRunning" type="checkbox" role="switch" class="switch" /></div>
+          </div>
+        </section>
+
+        <section id="notifications" class="section" hidden>
+          <header class="settings-head">
+            <h1>Notifications</h1>
+            <p>What is allowed to interrupt you, on every server you have open in this app.</p>
+          </header>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Do not disturb</span>
+              <span class="setting-desc">Holds every banner, and sets do not disturb on every server here so everyone
+                sees it on your dot. Turning it off here turns it off on them all.</span>
+            </div>
+            <div class="setting-control">
+              <select id="dndDuration" aria-label="Do not disturb">
+                <option value="off">Off</option>
+                <option value="1h">1 hour</option>
+                <option value="3h">3 hours</option>
+                <option value="1d">1 day</option>
+                <option value="1w">1 week</option>
+                <option value="never">Never expire</option>
+              </select>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Desktop notifications</span>
+              <span class="setting-desc">A native banner when someone mentions you, whichever server it was. Off here
+                means no banners from any of them.</span>
+            </div>
+            <div class="setting-control"><input id="desktopNotifications" type="checkbox" role="switch"
+                class="switch" /></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Check they arrive</span>
+              <span class="setting-desc">Nothing? Your computer keeps its own switch for Stoop, in the system's
+                notification settings.</span>
+            </div>
+            <div class="setting-control"><button id="testNotification" type="button" class="chip">Send a test
+                notification</button></div>
+          </div>
+        </section>
+
+        <section id="voice" class="section" hidden>
+          <header class="settings-head">
+            <h1>Voice</h1>
+            <p>How calls behave on every server you have open in this app.</p>
+          </header>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Voice room sounds</span>
+              <span class="setting-desc">A soft tone when someone joins or leaves the call you're in, whichever server
+                it's on. Off here silences it on all of them.</span>
+            </div>
+            <div class="setting-control"><input id="voiceCues" type="checkbox" role="switch" class="switch" /></div>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Push to talk</span>
+              <span class="setting-desc">While you're muted in a call, hold Ctrl+` to talk, from any app. Letting go
+                mutes you again.</span>
+              <span id="pushToTalkAccess" class="setting-desc" hidden></span>
+            </div>
+            <div class="setting-control"><input id="pushToTalk" type="checkbox" role="switch" class="switch" /></div>
+          </div>
+          <div id="pushToTalkFix" class="setting-row" hidden>
+            <div class="setting-text">
+              <span class="setting-title">Allow Input Monitoring</span>
+              <span class="setting-desc">Input Monitoring is used only to listen for the global push to talk keys.
+                Switch Stoop on in Privacy &amp; Security → Input Monitoring, then quit and reopen Stoop.</span>
+            </div>
+            <div class="setting-control"><button id="openKeyAccess" type="button" class="chip">Open System
+                Settings</button></div>
+          </div>
+        </section>
+
+        <section id="appearance" class="section" hidden>
+          <header class="settings-head">
+            <h1>Appearance</h1>
+            <p>How Stoop looks in this app. Every server you open here wears it, and so do the app's own screens. A
+              server opened in a browser keeps the theme chosen there.</p>
+          </header>
+          <p id="themeInUse" class="theme-in-use"></p>
+          <fieldset id="themeFilters" class="theme-filters">
+            <legend>Show</legend>
+          </fieldset>
+          <div id="themeCards" class="theme-cards"></div>
+          <label class="theme-system">
+            <input id="followSystem" type="checkbox" role="switch" class="switch" />
+            <span>Follow the system's light/dark setting<span id="systemHint" class="hint"></span></span>
+          </label>
+        </section>
+
+        <section id="servers" class="section" hidden>
+          <header class="settings-head">
+            <h1>Servers</h1>
+            <p>Every server you have added, each with its own sign-in. Removing one here forgets it on this computer
+              only.</p>
+          </header>
+          <div id="serverList" class="server-list"></div>
+          <div class="actions"><button id="addServer" type="button" class="chip">Add a server…</button></div>
+        </section>
+
+        <section id="about" class="section" hidden>
+          <header class="settings-head">
+            <h1>About</h1>
+          </header>
+          <div class="setting-row">
+            <div class="setting-text">
+              <span class="setting-title">Stoop Desktop <span id="version"></span></span>
+              <span id="updateStatus" class="setting-desc" role="status"></span>
+            </div>
+            <div class="setting-control">
+              <button id="updateAction" type="button" class="chip" hidden></button>
+              <button id="releases" type="button" class="chip">Releases</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
+
 </html>

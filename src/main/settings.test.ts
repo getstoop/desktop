@@ -25,6 +25,7 @@ const DEFAULTS: Settings = {
   dndUntil: null,
   notifications: true,
   voiceCues: true,
+  pushToTalk: false,
 };
 
 const write = (raw: unknown) =>
