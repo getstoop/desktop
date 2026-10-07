@@ -1,7 +1,7 @@
 {
   "name": "stoop-desktop",
   "productName": "Stoop",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Stoop for the desktop: a shell around the web app your server already serves.",
   "private": true,
   "license": "Apache-2.0",
