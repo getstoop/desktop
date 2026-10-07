@@ -3,8 +3,8 @@ import { app, shell } from "electron";
 
 // The one question push to talk asks of the system: is this key held
 // right now? Answered by native/keys, a small addon built with the app
-// (pnpm native) and shipped beside it as keys.node. If it is missing or
-// will not load, push to talk is simply unavailable.
+// (pnpm native) and shipped beside it in app.asar.unpacked. If it is
+// missing or will not load, push to talk is simply unavailable.
 
 export type Key = "backquote" | "control";
 // Input Monitoring on macOS; "unsupported" on Linux with no X display,
@@ -23,7 +23,7 @@ let loaded: Keys | null | undefined;
 function keys(): Keys | null {
   if (loaded === undefined) {
     const path = app.isPackaged
-      ? join(process.resourcesPath, "keys.node")
+      ? join(process.resourcesPath, "app.asar.unpacked", "keys.node")
       : join(app.getAppPath(), "native/keys/build/Release/keys.node");
     try {
       loaded = require(path) as Keys;

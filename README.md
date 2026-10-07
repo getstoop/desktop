@@ -152,7 +152,7 @@ src/main/       the Electron main process
   pushToTalk.ts   Ctrl+` held from any app: unmute, then mute on release
   keys.ts         loads native/keys: is a key held, and may we ask
 native/keys/    the push to talk addon, C over N-API, one file per platform;
-                built by `pnpm native`, shipped as keys.node beside the app
+                built by `pnpm native`, shipped in app.asar.unpacked
 src/preload/    bridge.ts → window.stoop for server pages
                 shell.ts  → window.shell for the app's own pages
 src/renderer/   the app's own pages, one directory each:
