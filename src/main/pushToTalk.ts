@@ -37,11 +37,19 @@ export function createHold(
 ): Hold {
   let poll: ReturnType<typeof setInterval> | null = null;
   let tail: ReturnType<typeof setTimeout> | null = null;
-  const watch = () => {
+  // Whether the hold being watched is one that unmuted. A press that
+  // found the call already open is watched too, so the shortcut firing
+  // again while that key stays down (Windows repeats a held hotkey) is
+  // the same press, and cannot undo a Mute clicked mid-hold.
+  let talking = false;
+  const watch = (talk: boolean) => {
+    talking = talk;
     poll = setInterval(() => {
       if (deps.held()) return;
       if (poll) clearInterval(poll);
       poll = null;
+      if (!talking) return;
+      talking = false;
       tail = setTimeout(() => {
         tail = null;
         deps.send("mute");
@@ -58,19 +66,23 @@ export function createHold(
         clearTimeout(tail);
         tail = null;
         if (deps.muted()) deps.send("unmute");
-        watch();
+        watch(true);
         return;
       }
-      if (!deps.muted()) return;
+      if (!deps.muted()) {
+        watch(false);
+        return;
+      }
       deps.send("unmute");
-      watch();
+      watch(true);
     },
     stop() {
-      if (!poll && !tail) return;
+      const open = talking || tail !== null;
       if (poll) clearInterval(poll);
       if (tail) clearTimeout(tail);
       poll = tail = null;
-      deps.send("mute");
+      talking = false;
+      if (open) deps.send("mute");
     },
   };
 }

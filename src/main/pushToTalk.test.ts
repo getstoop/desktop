@@ -81,6 +81,22 @@ describe("createHold", () => {
     expect(sent).toEqual([]);
   });
 
+  it("never lets a press on an open call turn into a hold while the keys stay down", () => {
+    muted = false;
+    const h = hold();
+    h.press();
+    muted = true; // Mute clicked with the key still held
+    h.press(); // the shortcut firing again for the same held key
+    vi.advanceTimersByTime(POLL_MS * 10);
+    expect(sent).toEqual([]);
+    release();
+    expect(sent).toEqual([]);
+    // Let go and pressed afresh: a new hold, which unmutes.
+    held = true;
+    h.press();
+    expect(sent).toEqual(["unmute"]);
+  });
+
   it("counts a repeated press during the hold once", () => {
     const h = hold();
     h.press();
