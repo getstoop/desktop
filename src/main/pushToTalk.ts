@@ -51,10 +51,13 @@ export function createHold(
   return {
     press() {
       if (poll) return;
-      // Pressed again inside the tail: the same hold carries on.
+      // Pressed again inside the tail: the same hold carries on, unmuting
+      // again if the call went quiet meanwhile (a refused unmute, a click
+      // on Mute).
       if (tail) {
         clearTimeout(tail);
         tail = null;
+        if (deps.muted()) deps.send("unmute");
         watch();
         return;
       }

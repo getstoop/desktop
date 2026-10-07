@@ -47,7 +47,11 @@ describe("createHold", () => {
     createHold({
       muted: () => muted,
       held: () => held,
-      send: (action) => sent.push(action),
+      // The page's next voice report follows the action.
+      send: (action) => {
+        sent.push(action);
+        muted = action === "mute";
+      },
     });
   // Let go: the next poll sees it, and the tail runs out after it.
   const release = () => {
@@ -96,6 +100,19 @@ describe("createHold", () => {
     expect(sent).toEqual(["unmute"]);
     release();
     expect(sent).toEqual(["unmute", "mute"]);
+  });
+
+  it("unmutes again when pressed inside the tail after the call went quiet", () => {
+    const h = hold();
+    h.press();
+    held = false;
+    vi.advanceTimersByTime(POLL_MS);
+    muted = true; // the unmute was refused, or Mute was clicked
+    held = true;
+    h.press();
+    expect(sent).toEqual(["unmute", "unmute"]);
+    release();
+    expect(sent).toEqual(["unmute", "unmute", "mute"]);
   });
 
   it("mutes when stopped mid-hold, and nothing comes after", () => {
