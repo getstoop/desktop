@@ -24,7 +24,9 @@ import type {
 import { BRIDGE, IPC } from "../shared/bridge";
 import { type ThemeId, themePreference } from "../shared/themes";
 import { type DeepLink, targetUrl } from "./deeplink";
+import { askKeyAccess, keyAccess } from "./keys";
 import { meetsMinimum, probeServer } from "./probe";
+import { PushToTalk } from "./pushToTalk";
 import { answerScreenShare } from "./screenshare";
 import {
   loadServers,
@@ -124,6 +126,11 @@ export class MainWindow {
   private dndTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
+  // Ctrl+` held from any app, acting on the call wherever it is.
+  private pushToTalk = new PushToTalk(
+    () => this.voiceSlot()?.voice ?? null,
+    (action) => this.voiceAction(action),
+  );
 
   constructor(private updates: Updates) {
     this.tray = new AppTray({
@@ -526,6 +533,14 @@ export class MainWindow {
       this.tellServers(IPC.stoopVoiceCues, this.tray.settings.voiceCues);
       this.rebuildAppMenu();
     }
+    if ("pushToTalk" in next) {
+      if (next.pushToTalk) askKeyAccess();
+      this.syncPushToTalk();
+    }
+  }
+
+  private syncPushToTalk() {
+    this.pushToTalk.sync(this.tray.settings.pushToTalk && !!this.voiceSlot());
   }
 
   // The switch as it stands, for a page asking as it loads.
@@ -797,6 +812,8 @@ export class MainWindow {
       dndUntil: this.dnd.until,
       notifications: this.tray.settings.notifications,
       voiceCues: this.tray.settings.voiceCues,
+      pushToTalk: this.tray.settings.pushToTalk,
+      keyAccess: keyAccess(),
       version: app.getVersion(),
       platform: process.platform,
       update: this.updates.state,
@@ -868,6 +885,7 @@ export class MainWindow {
   }
 
   private voiceChanged() {
+    this.syncPushToTalk();
     this.pushChrome();
     this.tray.refresh();
     this.rebuildAppMenu();

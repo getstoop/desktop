@@ -95,6 +95,7 @@ const settings = (keepRunning: boolean): Settings => ({
   dndUntil: null,
   notifications: true,
   voiceCues: true,
+  pushToTalk: false,
 });
 
 describe("hideOnClose", () => {

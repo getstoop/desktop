@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld("shell", {
   pickerChoose: (choice: unknown) =>
     ipcRenderer.send("shell:picker-choice", choice),
   openExternal: (url: string) => ipcRenderer.send("shell:open-external", url),
+  openKeyAccess: () => ipcRenderer.send("shell:open-key-access"),
   windowAction: (action: string) =>
     ipcRenderer.send("shell:window-action", action),
   getTheme: () => ipcRenderer.invoke("shell:get-theme"),

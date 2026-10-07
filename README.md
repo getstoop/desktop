@@ -48,6 +48,11 @@ pnpm install
 make dev        # electron-vite with --watch; `make lint`, `make test`, `make build`, `make package` too
 ```
 
+`make dev` and `make build` first compile the push to talk addon
+(`native/keys`, with node-gyp), which needs a C toolchain: Xcode's
+command line tools on macOS, Visual Studio's C++ build tools on Windows,
+and gcc with `libx11-dev` on Linux.
+
 The main process and the preload scripts rebuild and relaunch the app
 when they change; the app's own pages hot-reload from a Vite server on
 :5180. Add `http://localhost:8091` on the first page: the server
@@ -144,6 +149,10 @@ src/main/       the Electron main process
   deeplink.ts     stoop:// links: what one may say, and where it may go
   screenshare.ts  answers getDisplayMedia
   updates.ts      the app updating itself from the releases
+  pushToTalk.ts   Ctrl+` held from any app: unmute, then mute on release
+  keys.ts         loads native/keys: is a key held, and may we ask
+native/keys/    the push to talk addon, C over N-API, one file per platform;
+                built by `pnpm native`, shipped as keys.node beside the app
 src/preload/    bridge.ts → window.stoop for server pages
                 shell.ts  → window.shell for the app's own pages
 src/renderer/   the app's own pages, one directory each:

@@ -44,6 +44,13 @@ const desktopNotifications = document.getElementById(
   "desktopNotifications",
 ) as HTMLInputElement;
 const voiceCues = document.getElementById("voiceCues") as HTMLInputElement;
+const pushToTalk = document.getElementById("pushToTalk") as HTMLInputElement;
+const pushToTalkAccess = document.getElementById(
+  "pushToTalkAccess",
+) as HTMLSpanElement;
+const pushToTalkFix = document.getElementById(
+  "pushToTalkFix",
+) as HTMLDivElement;
 const updateStatus = document.getElementById("updateStatus") as HTMLSpanElement;
 const updateAction = document.getElementById(
   "updateAction",
@@ -81,6 +88,7 @@ function render(view: SettingsView) {
   keepRunning.checked = view.keepRunning;
   desktopNotifications.checked = view.notifications;
   voiceCues.checked = view.voiceCues;
+  renderPushToTalk(view);
   renderDnd(view);
   version.textContent = view.version;
   deb = view.deb;
@@ -196,6 +204,25 @@ desktopNotifications.addEventListener("change", async () => {
 voiceCues.addEventListener("change", async () => {
   render(await window.shell.setSettings({ voiceCues: voiceCues.checked }));
 });
+pushToTalk.addEventListener("change", async () => {
+  render(await window.shell.setSettings({ pushToTalk: pushToTalk.checked }));
+});
+(
+  document.getElementById("openKeyAccess") as HTMLButtonElement
+).addEventListener("click", () => window.shell.openKeyAccess());
+
+// On, but the keys cannot be read yet: say why, and on macOS where to fix
+// it. macOS only lets the new permission take effect after a reopen.
+function renderPushToTalk(view: SettingsView) {
+  pushToTalk.checked = view.pushToTalk;
+  const blocked = view.pushToTalk && view.keyAccess !== "granted";
+  const mac = view.platform === "darwin";
+  pushToTalkFix.hidden = !(blocked && mac);
+  pushToTalkAccess.hidden = !blocked;
+  pushToTalkAccess.textContent = mac
+    ? "Not listening yet: macOS needs Input Monitoring for Stoop to hear the key while you're in another app."
+    : "Not available here: Stoop can't read the keys on this system. On Linux it needs an X11 session.";
+}
 (
   document.getElementById("testNotification") as HTMLButtonElement
 ).addEventListener("click", () => window.shell.testNotification());

@@ -28,6 +28,9 @@ export interface Settings {
   // server here. Off silences it on all of them; each page asks the app
   // at the moment a cue would play.
   voiceCues: boolean;
+  // Hold Ctrl+` to talk from any app while muted in a call. Needs Input
+  // Monitoring on macOS, asked for when it is turned on.
+  pushToTalk: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -38,6 +41,7 @@ const DEFAULTS: Settings = {
   dndUntil: null,
   notifications: true,
   voiceCues: true,
+  pushToTalk: false,
 };
 const file = () => join(app.getPath("userData"), "settings.json");
 

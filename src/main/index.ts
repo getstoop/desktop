@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { app, autoUpdater, BrowserWindow, ipcMain, shell } from "electron";
 import { IPC, type Probe, VOICE_ACTIONS } from "../shared/bridge";
 import { type DeepLink, linkFromArgv, parseDeepLink, SCHEME } from "./deeplink";
+import { KEY_ACCESS_SETTINGS } from "./keys";
 import { meetsMinimum, normalizeServerUrl, probeServer } from "./probe";
 import type { Settings } from "./settings";
 import { markQuitting } from "./tray";
@@ -141,6 +142,12 @@ function start() {
   ipcMain.on(IPC.openExternal, (_event, url: string) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
   });
+  // The one System Settings pane push to talk needs, by a fixed address:
+  // openExternal takes only web links.
+  ipcMain.on(IPC.openKeyAccess, () => {
+    if (process.platform === "darwin")
+      void shell.openExternal(KEY_ACCESS_SETTINGS);
+  });
   ipcMain.on(IPC.windowAction, (_event, action: string) => {
     const win = main?.win;
     if (!win) return;
@@ -185,5 +192,6 @@ function settingsPatch(raw: unknown): Partial<Settings> {
     out.dndUntil = p.dndUntil as number | null;
   if (typeof p.notifications === "boolean") out.notifications = p.notifications;
   if (typeof p.voiceCues === "boolean") out.voiceCues = p.voiceCues;
+  if (typeof p.pushToTalk === "boolean") out.pushToTalk = p.pushToTalk;
   return out;
 }

@@ -126,6 +126,7 @@ export const IPC = {
   retryServer: "shell:retry-server",
   windowAction: "shell:window-action",
   openExternal: "shell:open-external",
+  openKeyAccess: "shell:open-key-access",
   chromeState: "shell:chrome-state",
   updateApp: "shell:update-app",
   getSettings: "shell:get-settings",
@@ -238,6 +239,10 @@ export interface SettingsView {
   dndUntil: number | null;
   notifications: boolean;
   voiceCues: boolean;
+  pushToTalk: boolean;
+  // Whether the keys can be read: Input Monitoring on macOS, an X display
+  // on Linux. Push to talk listens only when this is "granted".
+  keyAccess: "granted" | "denied" | "unknown" | "unsupported";
   version: string;
   platform: string;
   update: UpdateState;
