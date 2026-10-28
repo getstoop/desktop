@@ -45,6 +45,7 @@ const desktopNotifications = document.getElementById(
 ) as HTMLInputElement;
 const voiceCues = document.getElementById("voiceCues") as HTMLInputElement;
 const pushToTalk = document.getElementById("pushToTalk") as HTMLInputElement;
+const volumeKeys = document.getElementById("volumeKeys") as HTMLInputElement;
 const pushToTalkAccess = document.getElementById(
   "pushToTalkAccess",
 ) as HTMLSpanElement;
@@ -89,6 +90,7 @@ function render(view: SettingsView) {
   desktopNotifications.checked = view.notifications;
   voiceCues.checked = view.voiceCues;
   renderPushToTalk(view);
+  volumeKeys.checked = view.volumeKeys;
   renderDnd(view);
   version.textContent = view.version;
   deb = view.deb;
@@ -206,6 +208,9 @@ voiceCues.addEventListener("change", async () => {
 });
 pushToTalk.addEventListener("change", async () => {
   render(await window.shell.setSettings({ pushToTalk: pushToTalk.checked }));
+});
+volumeKeys.addEventListener("change", async () => {
+  render(await window.shell.setSettings({ volumeKeys: volumeKeys.checked }));
 });
 (
   document.getElementById("openKeyAccess") as HTMLButtonElement

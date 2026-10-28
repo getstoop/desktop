@@ -130,6 +130,29 @@ describe("voiceMenuItems", () => {
     });
   });
 
+  it("steps the volume, greyed out of voice", () => {
+    const [, , up, down] = voiceMenuItems(null, vi.fn());
+    expect(up).toMatchObject({
+      label: "Voice volume up",
+      enabled: false,
+      accelerator: ACCELERATORS.volumeUp,
+    });
+    expect(down).toMatchObject({
+      label: "Voice volume down",
+      enabled: false,
+      accelerator: ACCELERATORS.volumeDown,
+    });
+    const act = vi.fn();
+    const [, , upLive, downLive] = voiceMenuItems(report(), act);
+    expect(upLive).toMatchObject({ enabled: true });
+    click(upLive);
+    click(downLive);
+    expect(act.mock.calls.map(([a]) => a)).toEqual([
+      "volume-up",
+      "volume-down",
+    ]);
+  });
+
   it("asks for the opposite of the state reported", () => {
     const act = vi.fn();
     const [mute, deafen] = voiceMenuItems(

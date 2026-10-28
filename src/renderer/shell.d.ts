@@ -31,6 +31,7 @@ declare global {
         notifications?: boolean;
         voiceCues?: boolean;
         pushToTalk?: boolean;
+        volumeKeys?: boolean;
       }): Promise<SettingsView>;
       showPage(page: "add" | "settings" | "back"): void;
       testNotification(): void;

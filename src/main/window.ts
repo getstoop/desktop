@@ -49,6 +49,7 @@ import {
   voiceLabel,
   voiceMenuItems,
 } from "./voice";
+import { VolumeKeys } from "./volumeKeys";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -131,6 +132,8 @@ export class MainWindow {
     () => this.voiceSlot()?.voice ?? null,
     (action) => this.voiceAction(action),
   );
+  // Ctrl+Shift+Up and Down from any app, stepping the call's volume.
+  private volumeKeys = new VolumeKeys((action) => this.voiceAction(action));
 
   constructor(private updates: Updates) {
     this.tray = new AppTray({
@@ -537,10 +540,19 @@ export class MainWindow {
       if (next.pushToTalk) askKeyAccess();
       this.syncPushToTalk();
     }
+    if ("volumeKeys" in next) {
+      // The Voice menu's checkbox shows the same switch.
+      this.syncVolumeKeys();
+      this.rebuildAppMenu();
+    }
   }
 
   private syncPushToTalk() {
     this.pushToTalk.sync(this.tray.settings.pushToTalk && !!this.voiceSlot());
+  }
+
+  private syncVolumeKeys() {
+    this.volumeKeys.sync(this.tray.settings.volumeKeys && !!this.voiceSlot());
   }
 
   // The switch as it stands, for a page asking as it loads.
@@ -813,6 +825,7 @@ export class MainWindow {
       notifications: this.tray.settings.notifications,
       voiceCues: this.tray.settings.voiceCues,
       pushToTalk: this.tray.settings.pushToTalk,
+      volumeKeys: this.tray.settings.volumeKeys,
       keyAccess: keyAccess(),
       version: app.getVersion(),
       platform: process.platform,
@@ -886,6 +899,7 @@ export class MainWindow {
 
   private voiceChanged() {
     this.syncPushToTalk();
+    this.syncVolumeKeys();
     this.pushChrome();
     this.tray.refresh();
     this.rebuildAppMenu();
@@ -1030,6 +1044,12 @@ export class MainWindow {
             type: "checkbox",
             checked: this.tray.settings.voiceCues,
             click: (item) => this.updateSettings({ voiceCues: item.checked }),
+          },
+          {
+            label: "Volume keys from any app",
+            type: "checkbox",
+            checked: this.tray.settings.volumeKeys,
+            click: (item) => this.updateSettings({ volumeKeys: item.checked }),
           },
         ],
       },
