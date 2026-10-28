@@ -70,8 +70,9 @@ export function trayVoiceItems(
   return items;
 }
 
-// The app menu's Voice items. Each asks for a state, read off the last
-// report; out of voice they are greyed and the keys do nothing.
+// The app menu's Voice items. Mute and Deafen ask for a state, read off
+// the last report; the volume items ask for one step each. Out of voice
+// they are greyed and the keys do nothing.
 export function voiceMenuItems(
   report: VoiceReport | null,
   act: (action: VoiceAction) => void,
@@ -88,6 +89,18 @@ export function voiceMenuItems(
       accelerator: ACCELERATORS.toggleDeafen,
       enabled: !!report,
       click: () => act(report?.deafened ? "undeafen" : "deafen"),
+    },
+    {
+      label: "Voice volume up",
+      accelerator: ACCELERATORS.volumeUp,
+      enabled: !!report,
+      click: () => act("volume-up"),
+    },
+    {
+      label: "Voice volume down",
+      accelerator: ACCELERATORS.volumeDown,
+      enabled: !!report,
+      click: () => act("volume-down"),
     },
   ];
 }

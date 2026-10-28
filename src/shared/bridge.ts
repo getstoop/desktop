@@ -4,7 +4,7 @@
 
 import type { ThemePreference } from "./themes";
 
-export const BRIDGE = 5;
+export const BRIDGE = 6;
 
 export type ShortcutName = "pushToTalk";
 
@@ -77,7 +77,11 @@ export type VoiceAction =
   | "camera-on"
   | "camera-off"
   | "stop-screen"
-  | "leave";
+  | "leave"
+  // Bridge 6. One step of the call's volume each, not a state: the shell
+  // cannot know the page's level, and a held key keeps stepping.
+  | "volume-up"
+  | "volume-down";
 
 export const VOICE_ACTIONS: readonly VoiceAction[] = [
   "show",
@@ -89,6 +93,8 @@ export const VOICE_ACTIONS: readonly VoiceAction[] = [
   "camera-off",
   "stop-screen",
   "leave",
+  "volume-up",
+  "volume-down",
 ];
 
 // The indicator as the strip draws it: the report, and where to say it is.
@@ -240,6 +246,7 @@ export interface SettingsView {
   notifications: boolean;
   voiceCues: boolean;
   pushToTalk: boolean;
+  volumeKeys: boolean;
   // Whether the keys can be read: Input Monitoring on macOS, an X display
   // on Linux. Push to talk listens only when this is "granted".
   keyAccess: "granted" | "denied" | "unknown" | "unsupported";

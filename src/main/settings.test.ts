@@ -26,6 +26,7 @@ const DEFAULTS: Settings = {
   notifications: true,
   voiceCues: true,
   pushToTalk: false,
+  volumeKeys: true,
 };
 
 const write = (raw: unknown) =>

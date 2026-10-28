@@ -31,6 +31,9 @@ export interface Settings {
   // Hold Ctrl+` to talk from any app while muted in a call. Needs Input
   // Monitoring on macOS, asked for when it is turned on.
   pushToTalk: boolean;
+  // Ctrl+Shift+Up and Down step the call's volume from any app while in
+  // a call. Off, the keys stay with whatever app has them.
+  volumeKeys: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -42,6 +45,7 @@ const DEFAULTS: Settings = {
   notifications: true,
   voiceCues: true,
   pushToTalk: false,
+  volumeKeys: true,
 };
 const file = () => join(app.getPath("userData"), "settings.json");
 

@@ -96,6 +96,7 @@ const settings = (keepRunning: boolean): Settings => ({
   notifications: true,
   voiceCues: true,
   pushToTalk: false,
+  volumeKeys: true,
 });
 
 describe("hideOnClose", () => {

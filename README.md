@@ -150,6 +150,8 @@ src/main/       the Electron main process
   screenshare.ts  answers getDisplayMedia
   updates.ts      the app updating itself from the releases
   pushToTalk.ts   Ctrl+` held from any app: unmute, then mute on release
+  volumeKeys.ts   Ctrl+Shift+Up/Down from any app while in a call: one step
+                  of the call's volume each
   keys.ts         loads native/keys: is a key held, and may we ask
 native/keys/    the push to talk addon, C over N-API, one file per platform;
                 built by `pnpm native`, shipped in app.asar.unpacked
