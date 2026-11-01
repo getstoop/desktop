@@ -25,17 +25,17 @@
     "native": "node-gyp rebuild --directory native/keys"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.14",
+    "@biomejs/biome": "^2.6.4",
     "electron": "^44.4.5",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^5.0.0",
     "node-gyp": "^13.1.0",
     "typescript": "^7.0.2",
     "vite": "^7.0.0",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.5"
   },
   "packageManager": "pnpm@11.23.0",
   "dependencies": {
-    "electron-updater": "^6.8.10"
+    "electron-updater": "^6.8.11"
   }
 }
