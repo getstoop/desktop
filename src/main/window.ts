@@ -51,7 +51,7 @@ import {
   voiceMenuItems,
 } from "./voice";
 import { VolumeKeys } from "./volumeKeys";
-import { zoomLevel, zoomStep } from "./zoom";
+import { zoomLevel, zoomPercent, zoomStep } from "./zoom";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -557,7 +557,11 @@ export class MainWindow {
       this.syncVolumeKeys();
       this.rebuildAppMenu();
     }
-    if ("zoom" in next) this.applyZoom();
+    if ("zoom" in next) {
+      this.applyZoom();
+      // The View menu prints the percentage.
+      this.rebuildAppMenu();
+    }
   }
 
   // ---- zoom ----
@@ -590,6 +594,11 @@ export class MainWindow {
     const step = (direction: 1 | -1) =>
       set(() => zoomStep(this.tray.settings.zoom, direction));
     return [
+      // Where the zoom stands, as a line to read and not to click.
+      {
+        label: `Zoom: ${zoomPercent(this.tray.settings.zoom)}%`,
+        enabled: false,
+      },
       {
         label: "Actual Size",
         accelerator: ACCELERATORS.zoomReset,

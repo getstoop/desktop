@@ -21,3 +21,8 @@ export function zoomLevel(value: unknown): number {
 export function zoomStep(level: number, direction: 1 | -1): number {
   return zoomLevel(level + direction * ZOOM_STEP);
 }
+
+// A level as the percentage the menu prints: 0 is 100, -0.5 is 91.
+export function zoomPercent(level: number): number {
+  return Math.round(1.2 ** level * 100);
+}
