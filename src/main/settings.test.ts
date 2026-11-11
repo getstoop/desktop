@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_THEME } from "../shared/themes";
 import { loadSettings, type Settings, saveSettings } from "./settings";
+import { ZOOM_MAX } from "./zoom";
 
 const electron = vi.hoisted(() => ({
   userData: "",
@@ -27,6 +28,7 @@ const DEFAULTS: Settings = {
   voiceCues: true,
   pushToTalk: false,
   volumeKeys: true,
+  zoom: 0,
 };
 
 const write = (raw: unknown) =>
@@ -67,6 +69,15 @@ describe("loadSettings", () => {
     expect(loadSettings().theme).toEqual(DEFAULT_THEME);
     write({ theme: "dusk" });
     expect(loadSettings().theme).toEqual(DEFAULT_THEME);
+  });
+
+  it("keeps a saved zoom and holds one out of range", () => {
+    write({ zoom: -0.5 });
+    expect(loadSettings().zoom).toBe(-0.5);
+    write({ zoom: 99 });
+    expect(loadSettings().zoom).toBe(ZOOM_MAX);
+    write({ zoom: "big" });
+    expect(loadSettings().zoom).toBe(0);
   });
 
   it("keeps do not disturb that has not ended", () => {

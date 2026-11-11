@@ -6,6 +6,7 @@ import {
   type ThemePreference,
   themePreference,
 } from "../shared/themes";
+import { zoomLevel } from "./zoom";
 
 // Settings that belong to this app on this computer. Nothing about the
 // person or their servers lives here.
@@ -34,6 +35,10 @@ export interface Settings {
   // Ctrl+Shift+Up and Down step the call's volume from any app while in
   // a call. Off, the keys stay with whatever app has them.
   volumeKeys: boolean;
+  // The zoom every server page is shown at, and App settings, add and
+  // the gate with them (zoom.ts). One for the app, so switching servers
+  // doesn't change it. The title strip and its panels stay as they are.
+  zoom: number;
 }
 
 const DEFAULTS: Settings = {
@@ -46,6 +51,7 @@ const DEFAULTS: Settings = {
   voiceCues: true,
   pushToTalk: false,
   volumeKeys: true,
+  zoom: 0,
 };
 const file = () => join(app.getPath("userData"), "settings.json");
 
@@ -59,6 +65,7 @@ export function loadSettings(): Settings {
       ...DEFAULTS,
       ...raw,
       theme: themePreference(raw.theme),
+      zoom: zoomLevel(raw.zoom),
       dnd,
       dndUntil: dnd ? until : null,
     };

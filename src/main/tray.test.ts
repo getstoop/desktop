@@ -97,6 +97,7 @@ const settings = (keepRunning: boolean): Settings => ({
   voiceCues: true,
   pushToTalk: false,
   volumeKeys: true,
+  zoom: 0,
 });
 
 describe("hideOnClose", () => {

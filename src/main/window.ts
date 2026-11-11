@@ -8,6 +8,7 @@ import {
   powerMonitor,
   session,
   shell,
+  type WebContents,
   WebContentsView,
 } from "electron";
 import type {
@@ -50,6 +51,7 @@ import {
   voiceMenuItems,
 } from "./voice";
 import { VolumeKeys } from "./volumeKeys";
+import { zoomLevel, zoomPercent, zoomStep } from "./zoom";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -183,7 +185,14 @@ export class MainWindow {
       IPC.voicePanel,
     );
     this.chrome = this.shellView("chrome");
+    // The strip stays at actual size. The stock View menu this app once
+    // had could zoom it while it held the keyboard, and Chromium would
+    // remember that; nothing in the menu reaches it now.
+    this.chrome.webContents.once("did-navigate", () => {
+      this.chrome.webContents.setZoomLevel(0);
+    });
     this.page = this.shellView("add");
+    this.keepZoom(this.page.webContents);
     this.win.contentView.addChildView(this.chrome);
     this.win.contentView.addChildView(this.page);
     this.win.on("resize", () => {
@@ -330,6 +339,7 @@ export class MainWindow {
     };
     this.slots.set(server.id, slot);
     const wc = view.webContents;
+    this.keepZoom(wc);
     // A page that reloads, navigates away or crashes has dropped its call
     // without saying so.
     const dropVoice = () => {
@@ -505,11 +515,13 @@ export class MainWindow {
 
   // ---- the theme ----
 
-  // A settings change from the page or the tray. The theme is the one
-  // setting that repaints things, so it is checked and applied here.
+  // A settings change from the page, the tray or the menu. The theme
+  // and the zoom are the settings that repaint things, so they are
+  // checked and applied here.
   updateSettings(patch: Partial<Settings>) {
     const next = { ...patch };
     if ("theme" in next) next.theme = themePreference(next.theme);
+    if ("zoom" in next) next.zoom = zoomLevel(next.zoom);
     // An end belongs to an "on", and one already past is off.
     if ("dnd" in next || "dndUntil" in next) {
       const until =
@@ -545,6 +557,63 @@ export class MainWindow {
       this.syncVolumeKeys();
       this.rebuildAppMenu();
     }
+    if ("zoom" in next) {
+      this.applyZoom();
+      // The View menu prints the percentage.
+      this.rebuildAppMenu();
+    }
+  }
+
+  // ---- zoom ----
+
+  // The app's one zoom, set on every server page and on the page view
+  // (App settings, add, the gate). The strip and its panels keep their
+  // size: the main process lays them out in pixels. Under `make dev`
+  // the app's own pages share a host, so there the strip follows too.
+  private applyZoom() {
+    const level = this.tray.settings.zoom;
+    this.page.webContents.setZoomLevel(level);
+    for (const slot of this.slots.values())
+      slot.view.webContents.setZoomLevel(level);
+  }
+
+  // Chromium remembers zoom per site and falls back to that on every
+  // navigation, so a page arriving anywhere is set to the app's again.
+  private keepZoom(wc: WebContents) {
+    wc.on("did-navigate", () => {
+      wc.setZoomLevel(this.tray.settings.zoom);
+    });
+  }
+
+  private zoomMenuItems(): MenuItemConstructorOptions[] {
+    // On macOS the menu outlives a closed window; with no window there
+    // is nothing to zoom.
+    const set = (level: () => number) => () => {
+      if (!this.win.isDestroyed()) this.updateSettings({ zoom: level() });
+    };
+    const step = (direction: 1 | -1) =>
+      set(() => zoomStep(this.tray.settings.zoom, direction));
+    return [
+      // Where the zoom stands, as a line to read and not to click.
+      {
+        label: `Zoom: ${zoomPercent(this.tray.settings.zoom)}%`,
+        enabled: false,
+      },
+      {
+        label: "Actual Size",
+        accelerator: ACCELERATORS.zoomReset,
+        click: set(() => 0),
+      },
+      { label: "Zoom In", accelerator: ACCELERATORS.zoomIn, click: step(1) },
+      {
+        label: "Zoom In",
+        accelerator: ACCELERATORS.zoomInUnshifted,
+        visible: false,
+        acceleratorWorksWhenHidden: true,
+        click: step(1),
+      },
+      { label: "Zoom Out", accelerator: ACCELERATORS.zoomOut, click: step(-1) },
+    ];
   }
 
   private syncPushToTalk() {
@@ -1053,7 +1122,20 @@ export class MainWindow {
           },
         ],
       },
-      { role: "viewMenu" },
+      {
+        // The stock View menu, with the app's zoom in place of the
+        // per-page one.
+        label: "View",
+        submenu: [
+          { role: "reload" },
+          { role: "forceReload" },
+          { role: "toggleDevTools" },
+          { type: "separator" },
+          ...this.zoomMenuItems(),
+          { type: "separator" },
+          { role: "togglefullscreen" },
+        ],
+      },
       { role: "windowMenu" },
     ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
