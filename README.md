@@ -143,7 +143,11 @@ step and may not register the scheme at all; the `.deb` does.
 ```
 src/main/       the Electron main process
   window.ts       the one window: the title strip view, one view per server,
-                  the page view for the app's own screens, the server menu
+                  the page view for the app's own screens
+  slot.ts         one server's view: its session, its page, what it tells
+                  the window
+  calls.ts        which server holds voice, and the actions that reach it
+  menu.ts         the app menu and the server list the tray shares with it
   servers.ts      the persisted server list and each server's partition
   probe.ts        GET /version: is it Stoop, which version, what name
   deeplink.ts     stoop:// links: what one may say, and where it may go

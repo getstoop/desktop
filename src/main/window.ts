@@ -6,8 +6,6 @@ import {
   type MenuItemConstructorOptions,
   Notification,
   powerMonitor,
-  session,
-  shell,
   type WebContents,
   WebContentsView,
 } from "electron";
@@ -20,38 +18,25 @@ import type {
   SettingsView,
   SwitcherView,
   VoiceAction,
-  VoiceReport,
 } from "../shared/bridge";
 import { BRIDGE, IPC } from "../shared/bridge";
 import { type ThemeId, themePreference } from "../shared/themes";
+import { Calls } from "./calls";
 import { type DeepLink, targetUrl } from "./deeplink";
 import { askKeyAccess, keyAccess } from "./keys";
+import { appMenu, serverMenuItems } from "./menu";
 import { meetsMinimum, probeServer } from "./probe";
-import { PushToTalk } from "./pushToTalk";
-import { answerScreenShare } from "./screenshare";
-import {
-  loadServers,
-  newServer,
-  partitionFor,
-  type Server,
-  saveServers,
-} from "./servers";
+import { loadServers, newServer, type Server, saveServers } from "./servers";
 import type { Settings } from "./settings";
-import { ACCELERATORS, serverAccelerator, serverHint } from "./shortcuts";
+import { serverHint } from "./shortcuts";
+import { makeSlot, type Slot } from "./slot";
 import { loadWindowState, saveWindowState, type WindowState } from "./state";
 import { Switcher } from "./switcher";
 import { activeTheme, onSystemTheme, paletteFor, shellTheme } from "./theme";
 import { AppTray, hideOnClose } from "./tray";
 import { windowIcon } from "./trayIcon";
 import type { Updates } from "./updates";
-import {
-  parseVoiceReport,
-  trayVoiceItems,
-  voiceLabel,
-  voiceMenuItems,
-} from "./voice";
-import { VolumeKeys } from "./volumeKeys";
-import { zoomLevel, zoomPercent, zoomStep } from "./zoom";
+import { zoomLevel } from "./zoom";
 
 // One window. The shell draws the title strip (a small view across the
 // top: traffic lights, the front server's name as a menu, a dot when
@@ -67,7 +52,6 @@ import { zoomLevel, zoomPercent, zoomStep } from "./zoom";
 
 const STRIP_HEIGHT = 32;
 const shellPreload = join(__dirname, "../preload/shell.js");
-const bridgePreload = join(__dirname, "../preload/bridge.js");
 
 const rendererUrl = (page: string, query = "") =>
   process.env.ELECTRON_RENDERER_URL
@@ -75,27 +59,6 @@ const rendererUrl = (page: string, query = "") =>
     : null;
 const rendererFile = (page: string) =>
   join(__dirname, `../renderer/${page}/index.html`);
-
-interface Slot {
-  server: Server;
-  view: WebContentsView;
-  badge: number;
-  // Whether the server's web app is loaded, or the gate page stands in.
-  loaded: boolean;
-  gated: boolean;
-  probedAt: number;
-  // Why the gate page stands in, for showing it again on a switch.
-  gate?: { kind: string; detail: string };
-  // The server publishes a bridge level above what this app implements.
-  newer: boolean;
-  version: string;
-  // URL a deep link asked for, loaded by the next checkAndLoad.
-  pending?: string;
-  // What the page says it captures; null outside voice.
-  voice: VoiceReport | null;
-  // When its current call started, so the latest call speaks for the strip.
-  joinedAt: number;
-}
 
 // A loaded server is asked again this long after its last answer, when
 // the window comes back to the front. A gated one is asked every
@@ -129,20 +92,26 @@ export class MainWindow {
   private dndTimer: ReturnType<typeof setTimeout> | undefined;
   // The server an `open` link offered to add, and the path it named.
   private invited: { server: string; path: string } | null = null;
-  // Ctrl+` held from any app, acting on the call wherever it is.
-  private pushToTalk = new PushToTalk(
-    () => this.voiceSlot()?.voice ?? null,
-    (action) => this.voiceAction(action),
-  );
-  // Ctrl+Shift+Up and Down from any app, stepping the call's volume.
-  private volumeKeys = new VolumeKeys((action) => this.voiceAction(action));
+  // Which server holds voice, and the actions that reach it.
+  private calls = new Calls({
+    slots: () => this.slots.values(),
+    front: () => this.front,
+    settings: () => this.tray.settings,
+    changed: () => this.voiceChanged(),
+    notice: (text) => this.flashNotice(text),
+    show: (id) => {
+      this.voicePanel.hide(false);
+      this.reveal();
+      this.show(id);
+    },
+  });
 
   constructor(private updates: Updates) {
     this.tray = new AppTray({
       updateItems: () => this.updateTrayItems(),
       serverItems: () => this.serverMenuItems(),
-      voiceItems: () => this.voiceTrayItems(),
-      voiceTooltip: () => this.voiceTooltip(),
+      voiceItems: () => this.calls.trayItems(),
+      voiceTooltip: () => this.calls.tooltip(),
       unreadTotal: () => {
         let total = 0;
         for (const s of this.slots.values()) total += s.badge;
@@ -299,91 +268,26 @@ export class MainWindow {
   }
 
   private openSlot(server: Server): Slot {
-    const ses = session.fromPartition(partitionFor(server));
-    answerScreenShare(
-      ses,
-      () => (this.win.isDestroyed() ? null : this.win),
-      () => this.palette(),
-    );
-    ses.setUserAgent(desktopUserAgent(ses.getUserAgent()));
-    const view = new WebContentsView({
-      webPreferences: {
-        session: ses,
-        preload: bridgePreload,
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-        // The preload reads these back: the version so window.stoop and
-        // the user agent name the same build, the theme so the page's
-        // first paint is already in it.
-        additionalArguments: [
-          `--stoop-desktop-version=${app.getVersion()}`,
-          `--stoop-theme=${encodeURIComponent(JSON.stringify(shellTheme(this.theme)))}`,
-          `--stoop-notifications=${this.bannersAllowed()}`,
-          `--stoop-voice-cues=${this.tray.settings.voiceCues}`,
-        ],
+    const slot = makeSlot(server, {
+      win: this.win,
+      palette: () => this.palette(),
+      theme: () => this.theme,
+      settings: () => this.tray.settings,
+      bannersAllowed: () => this.bannersAllowed(),
+      left: (slot) => this.calls.drop(slot),
+      failed: (slot, detail) => {
+        slot.loaded = false;
+        this.gate(server, "unreachable", detail);
+      },
+      // Bring that server forward, and the window with it.
+      focused: () => {
+        if (this.front !== server.id) this.show(server.id);
+        if (!this.win.isFocused()) this.reveal();
       },
     });
-    view.setBackgroundColor(this.palette().canvas);
-    const slot: Slot = {
-      server,
-      view,
-      badge: 0,
-      loaded: false,
-      gated: false,
-      probedAt: 0,
-      newer: false,
-      version: "",
-      voice: null,
-      joinedAt: 0,
-    };
     this.slots.set(server.id, slot);
-    const wc = view.webContents;
-    this.keepZoom(wc);
-    // A page that reloads, navigates away or crashes has dropped its call
-    // without saying so.
-    const dropVoice = () => {
-      if (!slot.voice) return;
-      slot.voice = null;
-      this.voiceChanged();
-    };
-    wc.on("did-start-navigation", (details) => {
-      if (details.isMainFrame && !details.isSameDocument) dropVoice();
-    });
-    wc.on("render-process-gone", dropVoice);
-    wc.setWindowOpenHandler(({ url }) => {
-      void shell.openExternal(url);
-      return { action: "deny" };
-    });
-    wc.on("will-navigate", (event, next) => {
-      if (new URL(next).origin !== server.url) {
-        event.preventDefault();
-        void shell.openExternal(next);
-      }
-    });
-    // The theme may have moved between the view being made and the page
-    // loading; the page listens from its first script, so saying it
-    // again here lands.
-    wc.on("did-finish-load", () => {
-      wc.send(IPC.stoopTheme, shellTheme(this.theme));
-    });
-    wc.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
-      if (!isMainFrame || code === -3) return;
-      slot.loaded = false;
-      this.gate(server, "unreachable", `${description} (${code})`);
-    });
-    // A notification click calls window.focus() inside the page, which
-    // is this event: bring that server forward, and the window with it.
-    wc.on("focus", () => {
-      if (this.front !== server.id) this.show(server.id);
-      if (!this.win.isFocused()) {
-        if (this.win.isMinimized()) this.win.restore();
-        this.win.show();
-        this.win.focus();
-      }
-    });
-    view.setVisible(false);
-    this.win.contentView.addChildView(view);
+    this.keepZoom(slot.view.webContents);
+    this.win.contentView.addChildView(slot.view);
     this.layout();
     void this.checkAndLoad(server);
     return slot;
@@ -550,11 +454,11 @@ export class MainWindow {
     }
     if ("pushToTalk" in next) {
       if (next.pushToTalk) askKeyAccess();
-      this.syncPushToTalk();
+      this.calls.syncKeys();
     }
     if ("volumeKeys" in next) {
       // The Voice menu's checkbox shows the same switch.
-      this.syncVolumeKeys();
+      this.calls.syncKeys();
       this.rebuildAppMenu();
     }
     if ("zoom" in next) {
@@ -583,45 +487,6 @@ export class MainWindow {
     wc.on("did-navigate", () => {
       wc.setZoomLevel(this.tray.settings.zoom);
     });
-  }
-
-  private zoomMenuItems(): MenuItemConstructorOptions[] {
-    // On macOS the menu outlives a closed window; with no window there
-    // is nothing to zoom.
-    const set = (level: () => number) => () => {
-      if (!this.win.isDestroyed()) this.updateSettings({ zoom: level() });
-    };
-    const step = (direction: 1 | -1) =>
-      set(() => zoomStep(this.tray.settings.zoom, direction));
-    return [
-      // Where the zoom stands, as a line to read and not to click.
-      {
-        label: `Zoom: ${zoomPercent(this.tray.settings.zoom)}%`,
-        enabled: false,
-      },
-      {
-        label: "Actual Size",
-        accelerator: ACCELERATORS.zoomReset,
-        click: set(() => 0),
-      },
-      { label: "Zoom In", accelerator: ACCELERATORS.zoomIn, click: step(1) },
-      {
-        label: "Zoom In",
-        accelerator: ACCELERATORS.zoomInUnshifted,
-        visible: false,
-        acceleratorWorksWhenHidden: true,
-        click: step(1),
-      },
-      { label: "Zoom Out", accelerator: ACCELERATORS.zoomOut, click: step(-1) },
-    ];
-  }
-
-  private syncPushToTalk() {
-    this.pushToTalk.sync(this.tray.settings.pushToTalk && !!this.voiceSlot());
-  }
-
-  private syncVolumeKeys() {
-    this.volumeKeys.sync(this.tray.settings.volumeKeys && !!this.voiceSlot());
   }
 
   // The switch as it stands, for a page asking as it loads.
@@ -706,7 +571,7 @@ export class MainWindow {
       update:
         this.updates.state.kind === "ready" ? this.updates.state.version : null,
       settings: this.pageName === "settings",
-      voice: this.chromeVoice(),
+      voice: this.calls.chrome(),
       ok: palette.ok,
       danger: palette.danger,
       notice: this.notice,
@@ -752,7 +617,7 @@ export class MainWindow {
       this.win.contentView.removeChildView(slot.view);
       slot.view.webContents.close();
       this.slots.delete(id);
-      if (slot.voice) this.voiceChanged();
+      if (slot.voice) this.calls.changed();
     }
     this.servers = this.servers.filter((s) => s.id !== id);
     saveServers(this.servers);
@@ -931,30 +796,7 @@ export class MainWindow {
 
   setVoice(webContentsId: number, raw: unknown) {
     const slot = this.serverFor(webContentsId);
-    if (!slot) return;
-    const was = slot.voice;
-    slot.voice = parseVoiceReport(raw);
-    if (!was && slot.voice) {
-      slot.joinedAt = Date.now();
-      this.leaveOthers(slot);
-    }
-    this.voiceChanged();
-  }
-
-  // One call at a time across servers. Every join starts muted, so the new
-  // call is silent while the old one goes. A page too old for "leave" still
-  // takes the rest, and is quiet even if it stays connected.
-  private leaveOthers(joined: Slot) {
-    const left: string[] = [];
-    for (const other of this.slots.values()) {
-      if (other === joined || !other.voice) continue;
-      const wc = other.view.webContents;
-      if (wc.isDestroyed()) continue;
-      for (const action of ["mute", "camera-off", "stop-screen", "leave"])
-        wc.send(IPC.voiceAction, action);
-      left.push(other.server.name);
-    }
-    if (left.length) this.flashNotice(`Left voice on ${left.join(", ")}`);
+    if (slot) this.calls.set(slot, raw);
   }
 
   private flashNotice(text: string) {
@@ -966,51 +808,15 @@ export class MainWindow {
     }, NOTICE_MS);
   }
 
+  // Everything that shows the call follows it.
   private voiceChanged() {
-    this.syncPushToTalk();
-    this.syncVolumeKeys();
     this.pushChrome();
     this.tray.refresh();
     this.rebuildAppMenu();
   }
 
-  // The server whose page holds voice: the latest to join, because a page
-  // too old to leave when asked can still be holding a silenced call.
-  private voiceSlot(): Slot | undefined {
-    let latest: Slot | undefined;
-    for (const slot of this.slots.values())
-      if (slot.voice && (!latest || slot.joinedAt > latest.joinedAt))
-        latest = slot;
-    return latest;
-  }
-
-  // In front, the space names the call; behind, the server does, because
-  // that is what someone switching back would look for.
-  private voiceWhere(slot: Slot): string {
-    const voice = slot.voice;
-    if (!voice) return "";
-    const place =
-      slot.server.id === this.front ? voice.space : slot.server.name;
-    return `${voice.channel} · ${place}`;
-  }
-
-  private chromeVoice(): ChromeVoice | null {
-    const slot = this.voiceSlot();
-    if (!slot?.voice) return null;
-    const { kind, mic, camera, screen, channel } = slot.voice;
-    return { kind, mic, camera, screen, channel, where: this.voiceWhere(slot) };
-  }
-
-  // Acts on the call where it is. Only "show" switches servers.
   voiceAction(action: VoiceAction) {
-    const slot = this.voiceSlot();
-    if (!slot) return;
-    if (action === "show") {
-      this.voicePanel.hide(false);
-      this.reveal();
-      this.show(slot.server.id);
-    }
-    slot.view.webContents.send(IPC.voiceAction, action);
+    this.calls.act(action);
   }
 
   toggleVoicePanel() {
@@ -1018,7 +824,7 @@ export class MainWindow {
       this.voicePanel.hide();
       return;
     }
-    const voice = this.chromeVoice();
+    const voice = this.calls.chrome();
     if (!voice) return;
     this.switcher.hide(false);
     this.voicePanel.show(voice);
@@ -1026,19 +832,6 @@ export class MainWindow {
 
   closeVoicePanel() {
     this.voicePanel.hide();
-  }
-
-  voiceTrayItems(): MenuItemConstructorOptions[] {
-    const slot = this.voiceSlot();
-    if (!slot?.voice) return [];
-    return trayVoiceItems(slot.voice, this.voiceWhere(slot), (action) =>
-      this.voiceAction(action),
-    );
-  }
-
-  voiceTooltip(): string {
-    const voice = this.voiceSlot()?.voice;
-    return voice ? voiceLabel(voice.kind) : "";
   }
 
   // ---- updates ----
@@ -1068,76 +861,31 @@ export class MainWindow {
   // ---- the menu ----
 
   serverMenuItems(): MenuItemConstructorOptions[] {
-    return this.servers.map((server, i) => {
-      const badge = this.slots.get(server.id)?.badge ?? 0;
-      return {
-        label: badge ? `${server.name}  (${badge})` : server.name,
-        type: "radio",
-        checked: server.id === this.front,
-        accelerator: serverAccelerator(i),
-        click: () => this.show(server.id),
-      };
-    });
+    return serverMenuItems(
+      this.servers.map((server) => ({
+        id: server.id,
+        name: server.name,
+        badge: this.slots.get(server.id)?.badge ?? 0,
+      })),
+      this.front,
+      (id) => this.show(id),
+    );
   }
 
   rebuildAppMenu() {
-    const isMac = process.platform === "darwin";
-    const template: MenuItemConstructorOptions[] = [
-      ...(isMac ? [{ role: "appMenu" as const }] : []),
-      { role: "fileMenu" },
-      { role: "editMenu" },
-      {
-        label: "Servers",
-        submenu: [
-          ...this.serverMenuItems(),
-          { type: "separator" },
-          { label: "Add a server…", click: () => this.showPage("add") },
-          {
-            label: "App settings…",
-            accelerator: ACCELERATORS.settings,
-            click: () => this.showPage("settings"),
-          },
-        ],
+    const template = appMenu({
+      servers: this.serverMenuItems(),
+      voice: this.calls.report(),
+      settings: this.tray.settings,
+      showPage: (page) => this.showPage(page),
+      voiceAction: (action) => this.voiceAction(action),
+      updateSettings: (patch) => this.updateSettings(patch),
+      // On macOS the menu outlives a closed window; with no window there
+      // is nothing to zoom.
+      setZoom: (zoom) => {
+        if (!this.win.isDestroyed()) this.updateSettings({ zoom });
       },
-      {
-        label: "Voice",
-        submenu: [
-          ...voiceMenuItems(this.voiceSlot()?.voice ?? null, (action) =>
-            this.voiceAction(action),
-          ),
-          { type: "separator" },
-          // The App setting, mirrored where a call's other controls are,
-          // so it can be flipped mid-call without opening settings.
-          {
-            label: "Join and leave sounds",
-            type: "checkbox",
-            checked: this.tray.settings.voiceCues,
-            click: (item) => this.updateSettings({ voiceCues: item.checked }),
-          },
-          {
-            label: "Volume keys from any app",
-            type: "checkbox",
-            checked: this.tray.settings.volumeKeys,
-            click: (item) => this.updateSettings({ volumeKeys: item.checked }),
-          },
-        ],
-      },
-      {
-        // The stock View menu, with the app's zoom in place of the
-        // per-page one.
-        label: "View",
-        submenu: [
-          { role: "reload" },
-          { role: "forceReload" },
-          { role: "toggleDevTools" },
-          { type: "separator" },
-          ...this.zoomMenuItems(),
-          { type: "separator" },
-          { role: "togglefullscreen" },
-        ],
-      },
-      { role: "windowMenu" },
-    ];
+    });
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
   }
 }
@@ -1149,17 +897,4 @@ function hostOf(url: string): string {
   } catch {
     return url;
   }
-}
-
-// A standard Chrome user agent with our marker appended, as the
-// contract says (docs/architecture/desktop.md). Electron's default
-// names Electron and the package, which is what identity providers
-// key on to refuse an embedded browser.
-export function desktopUserAgent(base: string): string {
-  const chrome = base
-    .replace(/\s?Electron\/\S+/, "")
-    .replace(/\s?stoop-desktop\/\S+/, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  return `${chrome} Stoop-Desktop/${app.getVersion()}`;
 }

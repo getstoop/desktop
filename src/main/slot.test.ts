@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { desktopUserAgent } from "./window";
+import { desktopUserAgent } from "./slot";
 
 vi.mock("electron", () => ({
   app: { getVersion: () => "0.1.0" },
