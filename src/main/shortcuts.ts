@@ -11,6 +11,13 @@ export const ACCELERATORS = {
   // are macOS's own select-to-top and select-to-bottom.
   volumeUp: "Control+Shift+Up",
   volumeDown: "Control+Shift+Down",
+  // The usual zoom keys. Plus is the shifted key on most layouts, so
+  // the unshifted one beside it zooms in too, from an item the menu
+  // doesn't show.
+  zoomIn: "CmdOrCtrl+Plus",
+  zoomInUnshifted: "CmdOrCtrl+=",
+  zoomOut: "CmdOrCtrl+-",
+  zoomReset: "CmdOrCtrl+0",
 } as const;
 
 // The first nine servers, by position.
