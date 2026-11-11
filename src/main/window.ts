@@ -326,21 +326,40 @@ export class MainWindow {
     } else if (pending) {
       void slot.view.webContents.loadURL(pending);
     }
-    if (wasGated && this.front === server.id) this.show(server.id);
+    // A recovered server takes the place of its gate page, and of
+    // nothing else: App settings stays up until the person leaves it.
+    if (wasGated && this.front === server.id && !this.onOwnPage())
+      this.show(server.id);
     this.pushChrome();
   }
 
+  // Marks the server as one that cannot be shown. Its gate page goes up
+  // only when it is the server in front and the gate, or the server
+  // itself, is what is showing: App settings and the add page share the
+  // page view, and a server going quiet behind them leaves them be.
   private gate(server: Server, kind: string, detail: string) {
     const slot = this.slots.get(server.id);
-    if (slot) {
-      slot.gated = true;
-      slot.gate = { kind, detail };
-    }
-    const q = `?id=${encodeURIComponent(server.id)}&name=${encodeURIComponent(server.name)}&url=${encodeURIComponent(server.url)}&kind=${kind}&detail=${encodeURIComponent(detail)}`;
-    this.load(this.page, "gate", q);
-    if (this.front === server.id) this.showPage();
+    if (!slot) return;
+    slot.gated = true;
+    slot.gate = { kind, detail };
+    if (this.front === server.id && !this.onOwnPage()) this.showGate(slot);
     // A server behind the front one going quiet changes its row too.
     else this.refreshSwitcher();
+  }
+
+  // The gate page for a gated server, in front.
+  private showGate(slot: Slot) {
+    if (!slot.gate) return;
+    const { server } = slot;
+    const { kind, detail } = slot.gate;
+    const q = `?id=${encodeURIComponent(server.id)}&name=${encodeURIComponent(server.name)}&url=${encodeURIComponent(server.url)}&kind=${kind}&detail=${encodeURIComponent(detail)}`;
+    this.load(this.page, "gate", q);
+    this.showPage();
+  }
+
+  // App settings or the add page is what is showing.
+  private onOwnPage(): boolean {
+    return this.page.getVisible() && this.pageName !== "gate";
   }
 
   // Gated servers are asked again on every poll; loaded ones only when
@@ -371,7 +390,7 @@ export class MainWindow {
     if (slot.gated && slot.gate) {
       this.front = id;
       // The gate page comes up through showPage, which closes the panel.
-      this.gate(slot.server, slot.gate.kind, slot.gate.detail);
+      this.showGate(slot);
       this.remember();
       return;
     }
