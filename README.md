@@ -182,4 +182,9 @@ through private reporting, not issues: [SECURITY.md](SECURITY.md).
 
 ## License
 
-[Apache-2.0](LICENSE)
+Source-available under the
+[Functional Source License 1.1](LICENSE) (FSL-1.1-ALv2). You can run it,
+change it and share it for any purpose except offering it to others in a
+commercial product or service that competes with Stoop, or with a service
+the project runs on it. Each release becomes Apache-2.0 two years after
+it is published. Releases up to and including 0.5.0 stay Apache-2.0.

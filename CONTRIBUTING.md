@@ -68,5 +68,11 @@ Not here: see [SECURITY.md](SECURITY.md).
 
 ## License
 
-By contributing you agree that your contribution is licensed under the
-[Apache License 2.0](LICENSE), like the rest of the project.
+Stoop for the desktop is published under the
+[Functional Source License](LICENSE).
+
+By contributing you agree that your contribution is licensed to getstoop
+LLC under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+That is what lets the project publish it under the Functional Source
+License now and under Apache-2.0 when a release reaches its two-year
+date.
